@@ -14,6 +14,10 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateRange, setDateRange] = useState({
+    start: '',
+    end: ''
+  });
 
   // Load records from localStorage on component mount
   useEffect(() => {
@@ -129,14 +133,24 @@ export default function Home() {
     }
   };
 
-  // Filter records based on search term
-  const filteredRecords = records.filter(record => 
-    record.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter records based on search term and date range
+  const filteredRecords = records.filter(record => {
+    const matchesSearch = record.name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (dateRange.start && dateRange.end) {
+      const recordDate = new Date(record.loginTime).setHours(0, 0, 0, 0);
+      const startDate = new Date(dateRange.start).setHours(0, 0, 0, 0);
+      const endDate = new Date(dateRange.end).setHours(23, 59, 59, 999);
+      
+      return matchesSearch && recordDate >= startDate && recordDate <= endDate;
+    }
+    
+    return matchesSearch;
+  });
 
   const exportToCSV = () => {
     try {
-      const recordsToExport = searchTerm ? filteredRecords : records;
+      const recordsToExport = (searchTerm || dateRange.start || dateRange.end) ? filteredRecords : records;
       if (recordsToExport.length === 0) {
         setError('No records to export');
         return;
@@ -332,31 +346,101 @@ export default function Home() {
             </div>
           </div>
           
-          {/* Search Filter */}
-          <div style={{ marginBottom: '15px' }}>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name..."
-              style={{
-                padding: '8px 12px',
-                width: '100%',
-                maxWidth: '300px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px'
-              }}
-            />
-            {searchTerm && (
+          {/* Search and Date Range Filters */}
+          <div style={{ 
+            marginBottom: '15px',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '15px',
+            alignItems: 'flex-end'
+          }}>
+            <div>
+              <div style={{ marginBottom: '5px', fontSize: '14px', color: '#555' }}>Search by Name</div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Enter name..."
+                style={{
+                  padding: '8px 12px',
+                  width: '250px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+
+            <div>
+              <div style={{ marginBottom: '5px', fontSize: '14px', color: '#555' }}>Start Date</div>
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  width: '180px'
+                }}
+              />
+            </div>
+
+            <div>
+              <div style={{ marginBottom: '5px', fontSize: '14px', color: '#555' }}>End Date</div>
+              <input
+                type="date"
+                value={dateRange.end}
+                min={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  width: '180px'
+                }}
+              />
+            </div>
+
+            {(searchTerm || dateRange.start || dateRange.end) && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setDateRange({ start: '', end: '' });
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#f5f5f5',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  marginLeft: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                <span>🔄</span> Clear Filters
+              </button>
+            )}
+
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
               <span style={{ 
-                marginLeft: '10px', 
                 color: '#666',
-                fontSize: '14px'
+                fontSize: '14px',
+                backgroundColor: '#f8f9fa',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                border: '1px solid #eee'
               }}>
                 Showing {filteredRecords.length} record{filteredRecords.length !== 1 ? 's' : ''}
+                {(searchTerm || dateRange.start || dateRange.end) && 
+                  ` (filtered from ${records.length} total)`}
               </span>
-            )}
+            </div>
           </div>
         </div>
         
