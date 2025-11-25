@@ -11,66 +11,121 @@ export default function Home() {
   const [name, setName] = useState('');
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load records from localStorage on component mount
   useEffect(() => {
-    const savedRecords = localStorage.getItem('attendanceRecords');
-    if (savedRecords) {
-      const parsedRecords = JSON.parse(savedRecords);
-      setRecords(parsedRecords.map((record: any) => ({
-        ...record,
-        loginTime: new Date(record.loginTime),
-        logoutTime: record.logoutTime ? new Date(record.logoutTime) : null
-      })));
-      
-      // Check if there's an active session
-      const activeSession = parsedRecords.find((r: any) => !r.logoutTime);
-      if (activeSession) {
-        setCurrentSessionId(activeSession.id);
+    const loadRecords = () => {
+      try {
+        const savedRecords = localStorage.getItem('attendanceRecords');
+        if (savedRecords) {
+          const parsedRecords = JSON.parse(savedRecords);
+          const formattedRecords = parsedRecords.map((record: any) => ({
+            ...record,
+            loginTime: new Date(record.loginTime),
+            logoutTime: record.logoutTime ? new Date(record.logoutTime) : null
+          }));
+          
+          setRecords(formattedRecords);
+          
+          // Check for active session
+          const activeSession = formattedRecords.find((r: any) => !r.logoutTime);
+          if (activeSession) {
+            setCurrentSessionId(activeSession.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading records:', error);
+        setError('Failed to load attendance records. Some data might be corrupted.');
+      } finally {
+        setIsLoading(false);
       }
-    }
-  }, []);
-
-  // Save records to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('attendanceRecords', JSON.stringify(records));
-  }, [records]);
-
-  const handleClockIn = () => {
-    if (!name.trim()) {
-      alert('Please enter your name');
-      return;
-    }
-    
-    if (currentSessionId) {
-      alert('You are already clocked in!');
-      return;
-    }
-
-    const newRecord: AttendanceRecord = {
-      id: Date.now().toString(),
-      name: name.trim(),
-      loginTime: new Date(),
-      logoutTime: null
     };
 
-    setRecords([...records, newRecord]);
-    setCurrentSessionId(newRecord.id);
+    loadRecords();
+  }, []);
+
+  const saveRecords = (updatedRecords: AttendanceRecord[]) => {
+    try {
+      localStorage.setItem('attendanceRecords', JSON.stringify(updatedRecords));
+      return updatedRecords;
+    } catch (storageError) {
+      console.error('Failed to save to localStorage:', storageError);
+      setError('Failed to save attendance. Your data might not be saved.');
+      return records; // Return previous records if save fails
+    }
+  };
+
+  const handleClockIn = () => {
+    setError(null);
+    
+    // Validate input
+    if (!name.trim()) {
+      setError('Please enter your name');
+      return;
+    }
+
+    if (currentSessionId) {
+      setError('You are already clocked in!');
+      return;
+    }
+
+    try {
+      const newRecord: AttendanceRecord = {
+        id: Date.now().toString(),
+        name: name.trim(),
+        loginTime: new Date(),
+        logoutTime: null
+      };
+
+      setRecords(prevRecords => saveRecords([...prevRecords, newRecord]));
+      setCurrentSessionId(newRecord.id);
+    } catch (error) {
+      console.error('Error during clock in:', error);
+      setError('An unexpected error occurred. Please try again.');
+    }
   };
 
   const handleClockOut = () => {
+    setError(null);
+
     if (!currentSessionId) {
-      alert('You are not clocked in!');
+      setError('You are not currently clocked in!');
       return;
     }
 
-    setRecords(records.map(record => 
-      record.id === currentSessionId 
-        ? { ...record, logoutTime: new Date() } 
-        : record
-    ));
-    
-    setCurrentSessionId(null);
+    try {
+      setRecords(prevRecords => {
+        const updatedRecords = prevRecords.map(record => 
+          record.id === currentSessionId 
+            ? { ...record, logoutTime: new Date() } 
+            : record
+        );
+        return saveRecords(updatedRecords);
+      });
+
+      setCurrentSessionId(null);
+    } catch (error) {
+      console.error('Error during clock out:', error);
+      setError('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  const clearAllData = () => {
+    if (window.confirm('⚠️ WARNING: This will delete ALL attendance records. Are you sure?')) {
+      try {
+        localStorage.removeItem('attendanceRecords');
+        setRecords([]);
+        setCurrentSessionId(null);
+        setError('All attendance records have been cleared.');
+        // Clear the error after 3 seconds
+        setTimeout(() => setError(null), 3000);
+      } catch (error) {
+        console.error('Error clearing data:', error);
+        setError('Failed to clear attendance records.');
+      }
+    }
   };
 
   const formatDate = (date: Date | null) => {
@@ -86,31 +141,98 @@ export default function Home() {
     return `${hours}h ${minutes}m`;
   };
 
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        <div>Loading attendance records...</div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
       <h1>Employee Attendance Logger</h1>
       
+      {/* Error Display */}
+      {error && (
+        <div style={{ 
+          margin: '10px 0', 
+          padding: '10px', 
+          backgroundColor: '#ffebee', 
+          color: '#d32f2f', 
+          borderRadius: '4px',
+          border: '1px solid #ef9a9a',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span>⚠️ {error}</span>
+          <button 
+            onClick={() => setError(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#d32f2f',
+              cursor: 'pointer',
+              fontSize: '16px',
+              padding: '0 5px'
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #ddd' }}>
         <h2>{currentSessionId ? 'Clock Out' : 'Clock In'}</h2>
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            const { value } = e.target;
+            if (value.length <= 50) {  // Prevent very long names
+              setName(value);
+            }
+          }}
           placeholder="Enter your name"
           disabled={!!currentSessionId}
-          style={{ padding: '8px', marginRight: '10px', width: '200px' }}
+          style={{ 
+            padding: '8px', 
+            marginRight: '10px', 
+            width: '200px',
+            border: error && !name.trim() ? '1px solid #d32f2f' : '1px solid #ccc'
+          }}
         />
         {currentSessionId ? (
           <button 
             onClick={handleClockOut}
-            style={{ padding: '8px 16px', backgroundColor: '#f44336', color: 'white', border: 'none', cursor: 'pointer' }}
+            style={{ 
+              padding: '8px 16px', 
+              backgroundColor: '#f44336', 
+              color: 'white', 
+              border: 'none', 
+              cursor: 'pointer',
+              borderRadius: '4px'
+            }}
           >
             Clock Out
           </button>
         ) : (
           <button 
             onClick={handleClockIn}
-            style={{ padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', cursor: 'pointer' }}
+            style={{ 
+              padding: '8px 16px', 
+              backgroundColor: '#4CAF50', 
+              color: 'white', 
+              border: 'none', 
+              cursor: 'pointer',
+              borderRadius: '4px'
+            }}
           >
             Clock In
           </button>
@@ -118,32 +240,59 @@ export default function Home() {
       </div>
 
       <div style={{ marginTop: '40px' }}>
-        <h2>Attendance Records</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>Attendance Records</h2>
+          <button 
+            onClick={clearAllData}
+            style={{ 
+              padding: '8px 16px',
+              backgroundColor: '#f44336',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}
+          >
+            <span>🗑️</span> Clear All Data
+          </button>
+        </div>
+        
         {records.length === 0 ? (
           <p>No records found</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f2f2f2' }}>
-                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Name</th>
-                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Login Time</th>
-                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Logout Time</th>
-                <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Duration</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...records].reverse().map((record) => (
-                <tr key={record.id} style={{ borderBottom: '1px solid #ddd' }}>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{record.name}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{formatDate(record.loginTime)}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{formatDate(record.logoutTime)}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>
-                    {calculateDuration(record.loginTime, record.logoutTime)}
-                  </td>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f2f2f2' }}>
+                  <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Name</th>
+                  <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Login Time</th>
+                  <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Logout Time</th>
+                  <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Duration</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {[...records].reverse().map((record) => (
+                  <tr 
+                    key={record.id} 
+                    style={{ 
+                      borderBottom: '1px solid #ddd',
+                      backgroundColor: record.id === currentSessionId ? '#e8f5e9' : 'transparent'
+                    }}
+                  >
+                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>{record.name}</td>
+                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>{formatDate(record.loginTime)}</td>
+                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>{formatDate(record.logoutTime)}</td>
+                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                      {calculateDuration(record.loginTime, record.logoutTime)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
