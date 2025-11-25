@@ -218,46 +218,6 @@ export default function Home() {
     }, 0);
   };
 
-  const calculateStats = () => {
-    const now = new Date();
-    const today = new Date(now.setHours(0, 0, 0, 0));
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
-    
-    // Filter records for today and this week
-    const todayRecords = records.filter(record => 
-      new Date(record.loginTime) >= today
-    );
-    
-    const weekRecords = records.filter(record => 
-      new Date(record.loginTime) >= startOfWeek
-    );
-    
-    // Calculate total hours
-    const allTimeHours = calculateTotalHours(records);
-    const todayHours = calculateTotalHours(todayRecords);
-    const weekHours = calculateTotalHours(weekRecords);
-    
-    // Format time as H:MM
-    const formatTime = (ms: number) => {
-      const hours = Math.floor(ms / (1000 * 60 * 60));
-      const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-      return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
-    };
-    
-    return {
-      totalRecords: records.length,
-      activeSessions: records.filter(r => !r.logoutTime).length,
-      allTimeHours: formatTime(allTimeHours),
-      todayHours: formatTime(todayHours),
-      weekHours: formatTime(weekHours),
-      filteredRecords: filteredRecords.length,
-      totalFilteredHours: formatTime(calculateTotalHours(filteredRecords))
-    };
-  };
-
-  const stats = calculateStats();
-
   if (isLoading) {
     return (
       <div style={{ 
@@ -271,34 +231,6 @@ export default function Home() {
     );
   }
 
-  // Define proper TypeScript types for styles
-  const statCardStyle: React.CSSProperties = {
-    backgroundColor: 'white',
-    padding: '15px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-    textAlign: 'center' as const,
-    border: '1px solid #e9ecef',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  };
-
-  const statCardHoverStyle: React.CSSProperties = {
-    transform: 'translateY(-2px)',
-    boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-  };
-
-  const statValueStyle: React.CSSProperties = {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    color: '#1c7ed6',
-    marginBottom: '5px'
-  };
-
-  const statLabelStyle: React.CSSProperties = {
-    fontSize: '14px',
-    color: '#495057',
-    opacity: 0.8
-  };
 
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
@@ -385,117 +317,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* Stats Summary Section */}
-      <div style={{ 
-        margin: '30px 0', 
-        padding: '20px', 
-        backgroundColor: '#f8f9fa', 
-        borderRadius: '8px',
-        border: '1px solid #e9ecef'
-      }}>
-        <h2 style={{ marginTop: '0', color: '#333', marginBottom: '20px' }}>📊 Attendance Summary</h2>
-        
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-          gap: '15px',
-          marginBottom: '20px'
-        }}>
-          {/* Total Records */}
-          <div 
-            style={statCardStyle}
-            onMouseEnter={(e) => {
-              Object.assign(e.currentTarget.style, statCardHoverStyle);
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = '';
-              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-            }}
-          >
-            <div style={statValueStyle}>{stats.totalRecords}</div>
-            <div style={statLabelStyle}>Total Records</div>
-          </div>
-          
-          {/* Active Sessions */}
-          <div 
-            style={statCardStyle}
-            onMouseEnter={(e) => {
-              Object.assign(e.currentTarget.style, statCardHoverStyle);
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = '';
-              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-            }}
-          >
-            <div style={statValueStyle}>{stats.activeSessions}</div>
-            <div style={statLabelStyle}>Active Sessions</div>
-          </div>
-          
-          {/* Today's Hours */}
-          <div 
-            style={statCardStyle}
-            onMouseEnter={(e) => {
-              Object.assign(e.currentTarget.style, statCardHoverStyle);
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = '';
-              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-            }}
-          >
-            <div style={statValueStyle}>{stats.todayHours}</div>
-            <div style={statLabelStyle}>Today's Hours</div>
-          </div>
-          
-          {/* This Week's Hours */}
-          <div 
-            style={statCardStyle}
-            onMouseEnter={(e) => {
-              Object.assign(e.currentTarget.style, statCardHoverStyle);
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = '';
-              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-            }}
-          >
-            <div style={statValueStyle}>{stats.weekHours}</div>
-            <div style={statLabelStyle}>This Week</div>
-          </div>
-          
-          {/* All Time Hours */}
-          <div 
-            style={statCardStyle}
-            onMouseEnter={(e) => {
-              Object.assign(e.currentTarget.style, statCardHoverStyle);
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = '';
-              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-            }}
-          >
-            <div style={statValueStyle}>{stats.allTimeHours}</div>
-            <div style={statLabelStyle}>All Time</div>
-          </div>
-        </div>
-        
-        {/* Filtered Stats */}
-        {(searchTerm || dateRange.start || dateRange.end) && (
-          <div style={{
-            marginTop: '15px',
-            padding: '12px',
-            backgroundColor: '#e7f5ff',
-            borderRadius: '6px',
-            borderLeft: '4px solid #4dabf7',
-            fontSize: '14px',
-            color: '#1864ab'
-          }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Filtered Results:</div>
-            <div>Showing {stats.filteredRecords} of {stats.totalRecords} records</div>
-            <div>Total hours in filtered results: {stats.totalFilteredHours}</div>
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginTop: '20px' }}>
+      <div style={{ marginTop: '40px' }}>
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <h2>Attendance Records</h2>
