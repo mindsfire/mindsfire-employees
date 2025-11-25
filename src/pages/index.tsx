@@ -128,6 +128,52 @@ export default function Home() {
     }
   };
 
+  const exportToCSV = () => {
+    try {
+      if (records.length === 0) {
+        setError('No records to export');
+        return;
+      }
+
+      // Create CSV header
+      let csvContent = 'Name,Login Time,Logout Time,Duration\n';
+      
+      // Add each record as a row in the CSV
+      records.forEach(record => {
+        const loginTime = formatDate(record.loginTime);
+        const logoutTime = formatDate(record.logoutTime);
+        const duration = calculateDuration(record.loginTime, record.logoutTime);
+        
+        // Escape any commas in the data and add quotes
+        const escapeCsv = (str: string) => `"${str.replace(/"/g, '""')}"`;
+        
+        csvContent += [
+          escapeCsv(record.name),
+          escapeCsv(loginTime),
+          escapeCsv(logoutTime),
+          escapeCsv(duration)
+        ].join(',') + '\n';
+      });
+
+      // Create a download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `attendance_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      
+      // Trigger the download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      setError('Failed to export attendance records.');
+    }
+  };
+
   const formatDate = (date: Date | null) => {
     if (!date) return 'In Progress';
     return date.toLocaleString();
@@ -242,22 +288,40 @@ export default function Home() {
       <div style={{ marginTop: '40px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2>Attendance Records</h2>
-          <button 
-            onClick={clearAllData}
-            style={{ 
-              padding: '8px 16px',
-              backgroundColor: '#f44336',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px'
-            }}
-          >
-            <span>🗑️</span> Clear All Data
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={exportToCSV}
+              style={{ 
+                padding: '8px 16px',
+                backgroundColor: '#2196F3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <span>📥</span> Export to CSV
+            </button>
+            <button 
+              onClick={clearAllData}
+              style={{ 
+                padding: '8px 16px',
+                backgroundColor: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <span>🗑️</span> Clear All
+            </button>
+          </div>
         </div>
         
         {records.length === 0 ? (
