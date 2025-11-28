@@ -218,19 +218,55 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowPassword(prev => !prev)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
                 style={{
                   position: 'absolute',
-                  right: '10px',
+                  right: '12px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   cursor: 'pointer',
-                  color: '#2563eb',
-                  fontWeight: 600
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                  lineHeight: 0
                 }}
               >
-                {showPassword ? 'Hide' : 'Show'}
+                {showPassword ? (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#1f2937"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M6.708 6.708C4.585 8.295 3.108 10.302 2.25 12c1.5 4 5.25 6.75 9.75 6.75 1.201 0 2.347-.19 3.424-.535" />
+                    <path d="M20.983 15.299c.445-.54.827-1.093 1.067-1.549-1.5-4-5.25-6.75-9.75-6.75-.837 0-1.65.102-2.43.296" />
+                    <path d="M14.121 14.121a3 3 0 0 1-4.242-4.242" />
+                    <path d="M3 3l18 18" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#1f2937"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M2.25 12s3.75-6.75 9.75-6.75 9.75 6.75 9.75 6.75-3.75 6.75-9.75 6.75S2.25 12 2.25 12z" />
+                    <circle cx="12" cy="12" r="3.5" />
+                  </svg>
+                )}
               </button>
             </div>
             {errors.password && (
