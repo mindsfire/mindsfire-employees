@@ -208,6 +208,16 @@ export default function Home() {
     return `${hours}h ${minutes}m`;
   };
 
+  const calculateTotalHours = (recordsToCalculate: AttendanceRecord[]) => {
+    return recordsToCalculate.reduce((total, record) => {
+      if (record.logoutTime) {
+        const diff = record.logoutTime.getTime() - record.loginTime.getTime();
+        return total + diff;
+      }
+      return total;
+    }, 0);
+  };
+
   if (isLoading) {
     return (
       <div style={{ 
@@ -221,8 +231,9 @@ export default function Home() {
     );
   }
 
+
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
+    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
       <h1>Employee Attendance Logger</h1>
       
       {/* Error Display */}
@@ -255,8 +266,8 @@ export default function Home() {
         </div>
       )}
 
-      <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #ddd' }}>
-        <h2>{currentSessionId ? 'Clock Out' : 'Clock In'}</h2>
+      <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#f8f9fa' }}>
+        <h2 style={{ marginTop: '0', color: '#333' }}>{currentSessionId ? 'Clock Out' : 'Clock In'}</h2>
         <input
           type="text"
           value={name}
