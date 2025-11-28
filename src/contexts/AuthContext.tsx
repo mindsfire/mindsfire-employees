@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
 type User = {
   id: string;
@@ -18,19 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('authUser');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Failed to parse user data', error);
-      }
-    }
-    setLoading(false);
-  }, []);
+  const [loading] = useState(false);
 
   const login = async (employeeId: string, password: string) => {
     try {
@@ -45,7 +33,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role: employeeId === 'admin' ? 'admin' : 'employee'
       };
 
-      localStorage.setItem('authUser', JSON.stringify(mockUser));
       setUser(mockUser);
       return { success: true };
     } catch (error) {
@@ -58,7 +45,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('authUser');
     setUser(null);
   };
 
