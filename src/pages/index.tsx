@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { useAuth } from '../contexts/AuthContext';
 
 type AttendanceRecord = {
   id: string;
@@ -8,6 +10,19 @@ type AttendanceRecord = {
 };
 
 export default function Home() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return <div>Loading...</div>;
+  }
+
   const [name, setName] = useState('');
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
