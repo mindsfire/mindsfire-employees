@@ -164,14 +164,26 @@ export default function AdminDashboard() {
 
   const handleDelete = () => {
     if (selectedEmployeeIds.length === 0) return;
-    // Get the actual account IDs from the employees array
-    const accountIdsToDelete = employees
-      .filter(emp => selectedEmployeeIds.includes(emp.employeeId))
-      .map(emp => emp.id);
-    removeCustomAccounts(accountIdsToDelete);
-    setSelectedEmployeeIds([]);
-    loadEmployees();
-    setStatusMessage(`Removed ${selectedEmployeeIds.length} employee(s).`);
+    
+    // Get the names of employees to be deleted for the confirmation message
+    const employeesToDelete = employees.filter(emp => 
+      selectedEmployeeIds.includes(emp.employeeId)
+    );
+    const employeeNames = employeesToDelete.map(emp => emp.name).join(', ');
+    
+    // Show confirmation dialog
+    const confirmMessage = `Are you sure you want to delete the following employee(s):\n\n${employeeNames}\n\nThis action cannot be undone.`;
+    
+    if (window.confirm(confirmMessage)) {
+      // Get the actual account IDs from the employees array
+      const accountIdsToDelete = employees
+        .filter(emp => selectedEmployeeIds.includes(emp.employeeId))
+        .map(emp => emp.id);
+      removeCustomAccounts(accountIdsToDelete);
+      setSelectedEmployeeIds([]);
+      loadEmployees();
+      setStatusMessage(`Successfully removed ${selectedEmployeeIds.length} employee(s).`);
+    }
   };
 
   if (loading) {
