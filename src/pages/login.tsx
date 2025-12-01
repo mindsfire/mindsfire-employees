@@ -161,20 +161,12 @@ export default function Login() {
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#374151' }}>Employee ID</label>
             <input
               type="text"
-              placeholder="e.g. 1205"
+              placeholder="e.g. 1001 or admin"
               {...register('employeeId', {
                 required: 'Employee ID is required',
-                pattern: {
-                  value: /^\d+$/,
-                  message: 'Must contain only digits'
-                },
-                minLength: {
-                  value: 4,
-                  message: 'Minimum 4 digits'
-                },
                 maxLength: {
-                  value: 10,
-                  message: 'Maximum 10 digits'
+                  value: 20,
+                  message: 'Maximum 20 characters'
                 }
               })}
               disabled={isLoading || isLockedOut}
@@ -187,8 +179,12 @@ export default function Login() {
                 boxSizing: 'border-box'
               }}
             />
-            {errors.employeeId && (
+            {errors.employeeId ? (
               <p style={{ color: '#dc2626', fontSize: '0.875rem', marginTop: '6px' }}>{errors.employeeId.message}</p>
+            ) : (
+              <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '6px' }}>
+                Demo credentials: admin / Admin@123 · 1001 / Alice@1001 · 1002 / Rahul@1002
+              </p>
             )}
           </div>
           
