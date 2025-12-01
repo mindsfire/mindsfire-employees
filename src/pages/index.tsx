@@ -13,16 +13,13 @@ export default function Home() {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
 
-  const [name, setName] = useState('');
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dateRange, setDateRange] = useState({
-    start: '',
-    end: ''
-  });
+
+  // Use logged-in user's name
+  const userName = user?.name || '';
 
   // Redirect when auth status changes
   useEffect(() => {
@@ -81,9 +78,8 @@ export default function Home() {
   const handleClockIn = () => {
     setError(null);
     
-    // Validate input
-    if (!name.trim()) {
-      setError('Please enter your name');
+    if (!userName.trim()) {
+      setError('User name not available');
       return;
     }
 
@@ -95,7 +91,7 @@ export default function Home() {
     try {
       const newRecord: AttendanceRecord = {
         id: Date.now().toString(),
-        name: name.trim(),
+        name: userName.trim(),
         loginTime: new Date(),
         logoutTime: null
       };
@@ -133,6 +129,15 @@ export default function Home() {
     }
   };
 
+  // Single toggle function for clock in/out
+  const handleClockToggle = () => {
+    if (currentSessionId) {
+      handleClockOut();
+    } else {
+      handleClockIn();
+    }
+  };
+
   const clearAllData = () => {
     if (window.confirm('⚠️ WARNING: This will delete ALL attendance records. Are you sure?')) {
       try {
@@ -149,25 +154,12 @@ export default function Home() {
     }
   };
 
-  // Filter records based on search term and date range
-  const filteredRecords = records.filter(record => {
-    const matchesSearch = record.name.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (dateRange.start && dateRange.end) {
-      const recordDate = new Date(record.loginTime).setHours(0, 0, 0, 0);
-      const startDate = new Date(dateRange.start).setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.end).setHours(23, 59, 59, 999);
-      
-      return matchesSearch && recordDate >= startDate && recordDate <= endDate;
-    }
-    
-    return matchesSearch;
-  });
+  // Filter records for current user only
+  const userRecords = records.filter(record => record.name === userName);
 
   const exportToCSV = () => {
     try {
-      const recordsToExport = (searchTerm || dateRange.start || dateRange.end) ? filteredRecords : records;
-      if (recordsToExport.length === 0) {
+      if (records.length === 0) {
         setError('No records to export');
         return;
       }
@@ -176,7 +168,7 @@ export default function Home() {
       let csvContent = 'Name,Login Time,Logout Time,Duration\n';
       
       // Add each record as a row in the CSV
-      recordsToExport.forEach(record => {
+      records.forEach(record => {
         const loginTime = formatDate(record.loginTime);
         const logoutTime = formatDate(record.logoutTime);
         const duration = calculateDuration(record.loginTime, record.logoutTime);
@@ -315,61 +307,31 @@ export default function Home() {
       )}
 
       <div style={{ margin: '20px 0', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#f8f9fa' }}>
-        <h2 style={{ marginTop: '0', color: '#333' }}>{currentSessionId ? 'Clock Out' : 'Clock In'}</h2>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => {
-            const { value } = e.target;
-            if (value.length <= 50) {  // Prevent very long names
-              setName(value);
-            }
-          }}
-          placeholder="Enter your name"
-          disabled={!!currentSessionId}
+        <h2 style={{ marginTop: '0', color: '#333' }}>Hi {userName}</h2>
+        <p style={{ marginBottom: '16px', color: '#666' }}>
+          {currentSessionId ? 'You are currently clocked in' : 'You are not clocked in'}
+        </p>
+        <button 
+          onClick={handleClockToggle}
           style={{ 
-            padding: '8px', 
-            marginRight: '10px', 
-            width: '200px',
-            border: error && !name.trim() ? '1px solid #d32f2f' : '1px solid #ccc'
+            padding: '12px 24px', 
+            backgroundColor: currentSessionId ? '#f44336' : '#4CAF50', 
+            color: 'white', 
+            border: 'none', 
+            cursor: 'pointer',
+            borderRadius: '4px',
+            fontSize: '16px',
+            fontWeight: '600'
           }}
-        />
-        {currentSessionId ? (
-          <button 
-            onClick={handleClockOut}
-            style={{ 
-              padding: '8px 16px', 
-              backgroundColor: '#f44336', 
-              color: 'white', 
-              border: 'none', 
-              cursor: 'pointer',
-              borderRadius: '4px'
-            }}
-          >
-            Clock Out
-          </button>
-        ) : (
-          <button 
-            onClick={handleClockIn}
-            style={{ 
-              padding: '8px 16px', 
-              backgroundColor: '#4CAF50', 
-              color: 'white', 
-              border: 'none', 
-              cursor: 'pointer',
-              borderRadius: '4px'
-            }}
-          >
-            Clock In
-          </button>
-        )}
+        >
+          {currentSessionId ? 'Clock Out' : 'Clock In'}
+        </button>
       </div>
 
       <div style={{ marginTop: '40px' }}>
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <h2>Attendance Records</h2>
-            <div style={{ display: 'flex', gap: '10px' }}>
             <button 
               onClick={exportToCSV}
               style={{ 
@@ -386,124 +348,10 @@ export default function Home() {
             >
               <span>📥</span> Export to CSV
             </button>
-            <button 
-              onClick={clearAllData}
-              style={{ 
-                padding: '8px 16px',
-                backgroundColor: '#f44336',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}
-            >
-              <span>🗑️</span> Clear All
-            </button>
-            </div>
-          </div>
-          
-          {/* Search and Date Range Filters */}
-          <div style={{ 
-            marginBottom: '15px',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '15px',
-            alignItems: 'flex-end'
-          }}>
-            <div>
-              <div style={{ marginBottom: '5px', fontSize: '14px', color: '#555' }}>Search by Name</div>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Enter name..."
-                style={{
-                  padding: '8px 12px',
-                  width: '250px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-
-            <div>
-              <div style={{ marginBottom: '5px', fontSize: '14px', color: '#555' }}>Start Date</div>
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  width: '180px'
-                }}
-              />
-            </div>
-
-            <div>
-              <div style={{ marginBottom: '5px', fontSize: '14px', color: '#555' }}>End Date</div>
-              <input
-                type="date"
-                value={dateRange.end}
-                min={dateRange.start}
-                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  width: '180px'
-                }}
-              />
-            </div>
-
-            {(searchTerm || dateRange.start || dateRange.end) && (
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setDateRange({ start: '', end: '' });
-                }}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#f5f5f5',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  marginLeft: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}
-              >
-                <span>🔄</span> Clear Filters
-              </button>
-            )}
-
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
-              <span style={{ 
-                color: '#666',
-                fontSize: '14px',
-                backgroundColor: '#f8f9fa',
-                padding: '8px 12px',
-                borderRadius: '4px',
-                border: '1px solid #eee'
-              }}>
-                Showing {filteredRecords.length} record{filteredRecords.length !== 1 ? 's' : ''}
-                {(searchTerm || dateRange.start || dateRange.end) && 
-                  ` (filtered from ${records.length} total)`}
-              </span>
-            </div>
           </div>
         </div>
         
-        {filteredRecords.length === 0 ? (
+        {records.length === 0 ? (
           <p>No records found</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -517,7 +365,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                {[...filteredRecords].reverse().map((record) => (
+                {[...records].reverse().map((record) => (
                   <tr 
                     key={record.id} 
                     style={{ 
