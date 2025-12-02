@@ -469,41 +469,7 @@ export default function Home() {
 
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Employee Attendance Logger</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {user?.role === 'admin' && (
-            <button
-              onClick={() => router.push('/admin')}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: '#4a7ed4',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Admin Page
-            </button>
-          )}
-          <button
-            onClick={logout}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: '#555',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
-
+    <div>
       {/* Error Display */}
       {error && (
         <div style={{
