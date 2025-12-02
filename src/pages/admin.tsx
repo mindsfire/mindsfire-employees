@@ -200,150 +200,283 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.shell}>
-        <header style={styles.header}>
-          <div>
-            <p style={styles.title}>Employee Attendance Admin Dashboard,</p>
-          </div>
-          <div style={styles.headerActions}>
-            <span style={styles.greeting}>Hi {user.name.split(' ')[0]}</span>
-            <button style={styles.linkButton} onClick={logout}>
-              Sign out
-            </button>
-          </div>
-        </header>
-
-        {statusMessage && <p style={styles.status}>{statusMessage}</p>}
-
-        <div style={styles.toolbarRow}>
-          <div />
-          <div style={styles.actionButtons}>
-            <button style={styles.primaryButton} onClick={openCreateModal}>
-              Create Employee
-            </button>
-            <button
-              style={{ ...styles.secondaryButton, opacity: selectedEmployeeIds.length ? 1 : 0.4 }}
-              disabled={selectedEmployeeIds.length === 0}
-              onClick={handleDelete}
-            >
-              Delete Employee
-            </button>
+    <div className="min-h-screen bg-gray-100">
+      {/* Admin Navigation Bar */}
+      <div className="bg-slate-800">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <svg className="h-6 w-6 text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+              </svg>
+              <h1 className="text-white text-xl font-bold">Admin Control Panel</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <span className="text-green-400 text-sm font-medium">Admin</span>
+              </div>
+              <span className="text-gray-300 text-sm">{user.name}</span>
+              <button 
+                onClick={logout}
+                className="text-gray-300 hover:text-white text-sm font-medium transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </div>
-
-        <section style={styles.tableCard}>
-          <div style={styles.tableHeaderRow}>
-            <label style={styles.checkboxLabel}>
-              <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} />
-              <span>Employees</span>
-            </label>
-            <span style={styles.joinedCol}>Joined Date</span>
-            <span style={styles.actionCol}>
-              <span style={{ visibility: 'hidden' }}>edit</span>
-            </span>
-          </div>
-
-          <div>
-            {employees.map(account => (
-              <div key={account.employeeId} style={styles.employeeRow}>
-                <label style={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={selectedEmployeeIds.includes(account.employeeId)}
-                    onChange={() => toggleSelection(account.employeeId)}
-                  />
-                  <span>{account.name}</span>
-                </label>
-                <span style={styles.joinedCol}>{formatDate(account.joiningDate || '')}</span>
-                <span style={styles.actionCol}>
-                  <button style={styles.editButton} onClick={() => openEditModal(account)}>
-                    edit
-                  </button>
-                </span>
-              </div>
-            ))}
-            {employees.length === 0 && <p style={styles.emptyState}>No employees found.</p>}
-          </div>
-        </section>
       </div>
 
+      {/* Admin Header Stats */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Employee Management</h2>
+              <p className="text-sm text-gray-600 mt-1">Manage system users and access permissions</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{employees.length}</div>
+                <div className="text-xs text-gray-500">Total Employees</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {employees.filter(emp => emp.role === 'admin').length}
+                </div>
+                <div className="text-xs text-gray-500">Admins</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-lg border">
+          {statusMessage && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-800">{statusMessage}</p>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex justify-between items-center p-4 border-b border-gray-200">
+            <div className="flex space-x-3">
+              <button 
+                onClick={openCreateModal}
+                className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Add New Employee
+              </button>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  selectedEmployeeIds.length === 0 
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                    : 'bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500'
+                }`}
+                disabled={selectedEmployeeIds.length === 0}
+                onClick={handleDelete}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                Remove Selected ({selectedEmployeeIds.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Employee Table */}
+          <div className="overflow-hidden">
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center">
+                  <input 
+                    type="checkbox" 
+                    checked={allVisibleSelected} 
+                    onChange={toggleAll} 
+                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="ml-3 text-sm font-semibold text-gray-900 uppercase tracking-wide">System Users</span>
+                </label>
+                <div className="flex items-center space-x-8">
+                  <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide w-32 text-center">Access Level</span>
+                  <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide w-32 text-center">Join Date</span>
+                  <span className="w-20 text-center">
+                    <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Actions</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="divide-y divide-gray-200">
+              {employees.map(account => (
+                <div key={account.employeeId} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                  <label className="flex items-center flex-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedEmployeeIds.includes(account.employeeId)}
+                      onChange={() => toggleSelection(account.employeeId)}
+                      className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900">{account.name}</div>
+                      <div className="text-sm text-gray-500">ID: {account.employeeId}</div>
+                    </div>
+                  </label>
+                  <div className="flex items-center space-x-8">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      account.role === 'admin' 
+                        ? 'bg-purple-100 text-purple-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {account.role === 'admin' ? 'Administrator' : 'Employee'}
+                    </span>
+                    <span className="text-sm text-gray-600 w-32 text-center">{formatDate(account.joiningDate || '')}</span>
+                    <div className="w-20 text-center">
+                      <button 
+                        onClick={() => openEditModal(account)}
+                        className="text-emerald-600 hover:text-emerald-900 text-sm font-medium inline-flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {employees.length === 0 && (
+                <div className="px-6 py-12 text-center">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No employees found</h3>
+                  <p className="mt-1 text-sm text-gray-500">Get started by adding your first employee.</p>
+                  <div className="mt-6">
+                    <button
+                      onClick={openCreateModal}
+                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                      Add New Employee
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal */}
       {isModalOpen && (
-        <div style={styles.modalBackdrop}>
-          <div style={styles.modalCard}>
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <form onSubmit={handleSubmit}>
-              <h3 style={{ marginTop: 0 }}>{formState.id ? 'Edit Employee' : 'Create Employee'}</h3>
-              <label style={styles.formLabel}>
-                Name
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                {formState.id ? 'Edit Employee' : 'Create Employee'}
+              </h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Name
+                </label>
                 <input
-                  style={styles.formInput}
+                  type="text"
                   name="name"
                   value={formState.name}
                   onChange={handleFormChange}
                   required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 />
-              </label>
-              <label style={styles.formLabel}>
-                Employee ID
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Employee ID
+                </label>
                 <input
-                  style={styles.formInput}
+                  type="text"
                   name="employeeId"
                   value={formState.employeeId}
                   onChange={handleFormChange}
                   required
                   placeholder="Auto-generated from name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 />
-              </label>
-              <label style={styles.formLabel}>
-                Joining Date
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Joining Date
+                </label>
                 <input
-                  style={styles.formInput}
                   type="date"
                   name="joiningDate"
                   value={formState.joiningDate}
                   onChange={handleFormChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 />
-              </label>
-              <label style={styles.formLabel}>
-                Role
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Role
+                </label>
                 <select
-                  style={styles.formInput}
                   name="role"
                   value={formState.role}
                   onChange={handleFormChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   <option value="employee">Employee</option>
                   <option value="admin">Admin</option>
                 </select>
-              </label>
-              <label style={styles.formLabel}>
-                Temporary Password
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Temporary Password
+                </label>
                 <input
-                  style={styles.formInput}
+                  type="text"
                   name="password"
                   value={formState.password}
                   onChange={handleFormChange}
                   placeholder="Auto-generated"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 mb-2"
                 />
                 <button
                   type="button"
-                  style={{
-                    ...styles.primaryButton,
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    marginTop: '4px'
-                  }}
                   onClick={() => setFormState(prev => ({ ...prev, password: generatePassword(prev.name) }))}
+                  className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300"
                 >
                   Regenerate Password
                 </button>
-              </label>
+              </div>
 
-              <div style={styles.modalActions}>
-                <button type="submit" style={styles.primaryButton}>
+              <div className="flex justify-end space-x-3">
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
                   Save
                 </button>
-                <button type="button" style={styles.cancelButton} onClick={closeModal}>
+                <button 
+                  type="button" 
+                  onClick={closeModal}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
                   Cancel
                 </button>
               </div>
@@ -354,175 +487,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-const themeColor = '#4a7ed4';
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: '100vh',
-    backgroundColor: '#f7fbff',
-    padding: '24px',
-    fontFamily: '"Segoe UI", sans-serif',
-    color: themeColor
-  },
-  shell: {
-    maxWidth: 960,
-    margin: '0 auto',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: '24px 32px',
-    boxShadow: '0 10px 30px rgba(74, 126, 212, 0.15)',
-    border: '2px solid #b9cff3'
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24
-  },
-  title: {
-    fontSize: 20,
-    margin: 0,
-    fontWeight: 500
-  },
-  headerActions: {
-    display: 'flex',
-    gap: 12,
-    alignItems: 'center'
-  },
-  greeting: {
-    fontWeight: 500
-  },
-  linkButton: {
-    background: 'transparent',
-    border: 'none',
-    color: themeColor,
-    cursor: 'pointer',
-    fontWeight: 600
-  },
-  toolbarRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16
-  },
-  actionButtons: {
-    display: 'flex',
-    gap: 12
-  },
-  primaryButton: {
-    padding: '10px 18px',
-    borderRadius: 24,
-    border: '2px solid ' + themeColor,
-    backgroundColor: '#fff',
-    color: themeColor,
-    fontWeight: 600,
-    cursor: 'pointer'
-  },
-  secondaryButton: {
-    padding: '10px 18px',
-    borderRadius: 24,
-    border: '2px solid ' + themeColor,
-    backgroundColor: '#eef5ff',
-    color: themeColor,
-    fontWeight: 600,
-    cursor: 'pointer'
-  },
-  tableCard: {
-    border: '2px solid #b9cff3',
-    borderRadius: 24,
-    padding: '16px 24px'
-  },
-  tableHeaderRow: {
-    display: 'flex',
-    alignItems: 'center',
-    fontWeight: 600,
-    padding: '8px 0',
-    borderBottom: '1px solid #d1e0fa'
-  },
-  checkboxLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1
-  },
-  joinedCol: {
-    flexBasis: 140,
-    textAlign: 'center'
-  },
-  actionCol: {
-    width: 80,
-    textAlign: 'right'
-  },
-  employeeRow: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '10px 0',
-    borderBottom: '1px solid #eef5ff'
-  },
-  editButton: {
-    padding: '6px 16px',
-    borderRadius: 16,
-    border: '1px solid ' + themeColor,
-    backgroundColor: '#fff',
-    color: themeColor,
-    cursor: 'pointer'
-  },
-  emptyState: {
-    textAlign: 'center',
-    margin: '24px 0',
-    color: '#7e9fd9'
-  },
-  status: {
-    color: '#7e9fd9',
-    marginTop: 0
-  },
-  modalBackdrop: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16
-  },
-  modalCard: {
-    backgroundColor: '#f0f6ff',
-    borderRadius: 24,
-    padding: 32,
-    width: '100%',
-    maxWidth: 420,
-    border: '2px solid #b9cff3'
-  },
-  formLabel: {
-    display: 'block',
-    marginBottom: 12,
-    fontWeight: 600
-  },
-  formInput: {
-    width: '100%',
-    marginTop: 4,
-    padding: '10px 12px',
-    borderRadius: 12,
-    border: '1px solid #93b5f4',
-    fontSize: 14
-  },
-  modalActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 24
-  },
-  cancelButton: {
-    padding: '10px 18px',
-    borderRadius: 24,
-    border: '2px solid #f59f9f',
-    backgroundColor: '#fff0f0',
-    color: '#d25050',
-    fontWeight: 600,
-    cursor: 'pointer'
-  }
-};
