@@ -9,16 +9,16 @@ export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
   // Don't show layout on login page
-  const showLayout = router.pathname !== '/login';
+  const isLoginPage = router.pathname === '/login';
 
   return (
     <AuthProvider>
-      {showLayout ? (
+      {isLoginPage ? (
+        <Component {...pageProps} />
+      ) : (
         <Layout>
           <Component {...pageProps} />
         </Layout>
-      ) : (
-        <Component {...pageProps} />
       )}
     </AuthProvider>
   );

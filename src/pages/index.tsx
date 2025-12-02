@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+import Layout from '../components/Layout';
+import StatsCards from '../components/StatsCards';
 
-
-type AttendanceRecord = {
+export type AttendanceRecord = {
   id: string;
   name: string;
   loginTime: Date;
@@ -533,6 +534,13 @@ export default function Home() {
         </button>
       </div>
 
+      {/* Stats Cards */}
+      <StatsCards
+        records={records}
+        currentSessionId={currentSessionId}
+        userName={userName}
+      />
+
       <div style={{ marginTop: '40px' }}>
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -563,7 +571,6 @@ export default function Home() {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f2f2f2' }}>
-                  <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Name</th>
                   <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Login Time</th>
                   <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Logout Time</th>
                   <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Duration</th>
@@ -579,7 +586,6 @@ export default function Home() {
                       backgroundColor: record.id === currentSessionId ? '#e8f5e9' : 'transparent'
                     }}
                   >
-                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>{record.name}</td>
                     <td style={{ padding: '10px', border: '1px solid #ddd' }}>{formatDate(record.loginTime)}</td>
                     <td style={{ padding: '10px', border: '1px solid #ddd' }}>{formatDate(record.logoutTime)}</td>
                     <td style={{ padding: '10px', border: '1px solid #ddd' }}>
