@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Logout() {
     const { logout } = useAuth();
@@ -17,6 +18,18 @@ export default function Logout() {
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-200 to-indigo-200 rounded-full opacity-20 blur-3xl"></div>
                 <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-purple-200 to-pink-200 rounded-full opacity-20 blur-3xl"></div>
+            </div>
+
+            {/* Logo at top left */}
+            <div className="absolute top-8 left-8 z-20">
+                <Image
+                    src="/mindsfire-logo.png"
+                    alt="Mindsfire Logo"
+                    width={140}
+                    height={46}
+                    className="object-contain"
+                    priority
+                />
             </div>
 
             <div className="relative z-10 w-full max-w-md">
