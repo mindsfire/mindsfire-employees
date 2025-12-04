@@ -211,27 +211,9 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="bg-gray-100">
+    <div>
       {/* Admin Navigation Bar */}
-      <div className="bg-slate-800">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <svg className="h-6 w-6 text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-              </svg>
-              <h1 className="text-white text-xl font-bold">Admin Control Panel</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-green-400 text-sm font-medium">Admin</span>
-              </div>
-              <span className="text-gray-300 text-sm">{user.name}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {/* Admin Header Stats */}
       <div className="bg-white border-b border-gray-200">
@@ -259,7 +241,7 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow-lg border">
+        <div className="">
           {statusMessage && (
             <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
               <p className="text-sm text-green-800">{statusMessage}</p>
@@ -300,7 +282,7 @@ export default function AdminDashboard() {
           <div className="overflow-hidden">
             <div className="overflow-x-auto">
               <div className="min-w-[800px]">
-                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="bg-gray-100 px-6 py-4 border-b border-gray-200">
                   <div className="flex items-center justify-between">
                     <label className="flex items-center">
                       <input
@@ -323,7 +305,7 @@ export default function AdminDashboard() {
 
                 <div className="divide-y divide-gray-200">
                   {employees.map(account => (
-                    <div key={account.employeeId} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                    <div key={account.employeeId} className="px-6 py-4 flex items-center justify-between hover:bg-gray-100 transition-colors">
                       <label className="flex items-center flex-1">
                         <input
                           type="checkbox"
