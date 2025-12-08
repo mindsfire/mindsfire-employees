@@ -17,7 +17,7 @@ export default function Login() {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutUntil, setLockoutUntil] = useState<Date | null>(null);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, testSupabaseConnection } = useAuth();
   const lockoutDurationMs = 30 * 1000; // 30 seconds temporary lock
 
   const {
@@ -189,8 +189,25 @@ export default function Login() {
               )
             }
 
+            {/* Debug Button - Remove in production */}
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (testSupabaseConnection) {
+                    const result = await testSupabaseConnection();
+                    console.log('Supabase Connection Test:', result);
+                    alert('Check console for Supabase connection test results');
+                  }
+                }}
+                className="w-full bg-yellow-500 text-white py-2 px-4 rounded hover:bg-yellow-600 transition-colors"
+              >
+                Test Supabase Connection
+              </button>
+            </div>
+
             {/* Login Form */}
-            <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div>
                 <label htmlFor="employeeId" className="block text-sm font-semibold text-gray-700 mb-2">
                   Employee ID

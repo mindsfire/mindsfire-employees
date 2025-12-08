@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import StatsCards from '../components/StatsCards';
+import { supabase } from '../lib/supabaseClient';
 
 export type AttendanceRecord = {
   id: string;
@@ -233,73 +234,82 @@ export default function Home() {
     }
   }, [user, loading, router]);
 
-
-
-  // Load records from localStorage on component mount
+  // Load records from Supabase on component mount
   useEffect(() => {
-    const loadRecords = () => {
+    const loadRecords = async () => {
+      if (!user) return;
+
       try {
-        const savedRecords = localStorage.getItem('attendanceRecords');
-        if (savedRecords) {
-          const parsedRecords = JSON.parse(savedRecords);
-          if (!Array.isArray(parsedRecords)) {
-            console.error('Parsed records is not an array:', parsedRecords);
-            setRecords([]);
-            return;
-          }
-          const formattedRecords = parsedRecords.map((record: any) => ({
-            ...record,
-            loginTime: new Date(record.loginTime),
-            logoutTime: record.logoutTime ? new Date(record.logoutTime) : null
-          }));
+        let query = supabase
+          .schema('attendance')
+          .from('attendance_logs')
+          .select('*')
+          .order('login_time', { ascending: false });
 
-          // Auto-close unclosed sessions from previous days
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
+        // Filter by employee if not admin
+        if (user.role !== 'admin') {
+          query = query.eq('employee_id', user.employeeId);  // Use employeeId not id
+        }
 
-          let hasAutoClosedSessions = false;
-          const autoClosedRecords = formattedRecords.map((record: AttendanceRecord) => {
-            // If session is unclosed and from a previous day
-            if (!record.logoutTime) {
-              const loginDate = new Date(record.loginTime);
-              loginDate.setHours(0, 0, 0, 0);
+        const { data, error } = await query;
 
-              if (loginDate < today) {
-                // Auto-close at 11:59:59 PM of the login day
-                const autoLogoutTime = new Date(record.loginTime);
-                autoLogoutTime.setHours(23, 59, 59, 999);
-                hasAutoClosedSessions = true;
-                return { ...record, logoutTime: autoLogoutTime };
-              }
+        if (error) {
+          console.error('Error loading records:', error);
+          setError('Failed to load attendance records');
+          return;
+        }
+
+        const formattedRecords = (data || []).map((record: any) => ({
+          id: record.id,
+          name: userName, // Use current user's name since not stored in DB
+          loginTime: new Date(record.login_time),
+          logoutTime: record.logout_time ? new Date(record.logout_time) : null
+        }));
+
+        // Auto-close unclosed sessions from previous days
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let hasAutoClosedSessions = false;
+        const autoClosedRecords = formattedRecords.map((record: AttendanceRecord) => {
+          // If session is unclosed and from a previous day
+          if (!record.logoutTime) {
+            const loginDate = new Date(record.loginTime);
+            loginDate.setHours(0, 0, 0, 0);
+
+            if (loginDate < today) {
+              // Auto-close at 11:59:59 PM of the login day
+              const autoLogoutTime = new Date(record.loginTime);
+              autoLogoutTime.setHours(23, 59, 59, 999);
+              hasAutoClosedSessions = true;
+              return { ...record, logoutTime: autoLogoutTime };
             }
-            return record;
-          });
-
-          // Check for active session (only from today)
-          const activeSession = autoClosedRecords.find((r: any) => !r.logoutTime);
-          if (activeSession) {
-            setCurrentSessionId(activeSession.id);
           }
+          return record;
+        });
 
-          // Apply Retention Policy
-          const cutoffDate = new Date();
-          cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+        // Check for active session (only from today)
+        const activeSession = autoClosedRecords.find((r: any) => !r.logoutTime);
+        if (activeSession) {
+          setCurrentSessionId(activeSession.id);
+        }
 
-          const validRecords = autoClosedRecords.filter((record: AttendanceRecord) => {
-            return record.loginTime > cutoffDate;
-          });
+        // Apply Retention Policy
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
 
-          if (validRecords.length !== formattedRecords.length || hasAutoClosedSessions) {
-            console.log(`Cleaned up ${formattedRecords.length - validRecords.length} old records.`);
-            if (hasAutoClosedSessions) {
-              console.log('Auto-closed unclosed sessions from previous days.');
-            }
-            setRecords(validRecords);
-            localStorage.setItem('attendanceRecords', JSON.stringify(validRecords));
-          } else {
-            setRecords(formattedRecords);
+        const validRecords = autoClosedRecords.filter((record: AttendanceRecord) => {
+          return record.loginTime > cutoffDate;
+        });
+
+        if (validRecords.length !== formattedRecords.length || hasAutoClosedSessions) {
+          console.log(`Cleaned up ${formattedRecords.length - validRecords.length} old records.`);
+          if (hasAutoClosedSessions) {
+            console.log('Auto-closed unclosed sessions from previous days.');
           }
         }
+
+        setRecords(validRecords);
       } catch (error) {
         console.error('Error loading records:', error);
         setError('Failed to load attendance records. Some data might be corrupted.');
@@ -309,7 +319,7 @@ export default function Home() {
     };
 
     loadRecords();
-  }, []);
+  }, [user]);
 
   // Check attendance compliance when records change
   useEffect(() => {
@@ -328,22 +338,13 @@ export default function Home() {
     return null; // Render nothing while redirecting
   }
 
-  const saveRecords = (updatedRecords: AttendanceRecord[]) => {
-    try {
-      localStorage.setItem('attendanceRecords', JSON.stringify(updatedRecords));
-      return updatedRecords;
-    } catch (storageError) {
-      console.error('Failed to save to localStorage:', storageError);
-      setError('Failed to save attendance. Your data might not be saved.');
-      return records; // Return previous records if save fails
-    }
-  };
+  // saveRecords is no longer needed - Supabase handles persistence
 
-  const handleClockIn = () => {
+  const handleClockIn = async () => {
     setError(null);
 
-    if (!userName.trim()) {
-      setError('User name not available');
+    if (!userName.trim() || !user) {
+      setError('User information not available');
       return;
     }
 
@@ -353,22 +354,51 @@ export default function Home() {
     }
 
     try {
-      const newRecord: AttendanceRecord = {
-        id: Date.now().toString(),
-        name: userName.trim(),
-        loginTime: new Date(),
-        logoutTime: null
+      console.log('Clocking in with user:', user);
+      console.log('User ID (UUID):', user.id);
+      console.log('Employee ID (text):', user.employeeId);
+      console.log('User Name:', userName.trim());
+      
+      const attendanceData = {
+        employee_id: user.employeeId,  // Use employeeId (text) not id (UUID)
+        login_time: new Date().toISOString(),
+        logout_time: null
       };
+      
+      console.log('Attendance data to insert:', attendanceData);
+      
+      const { data, error } = await supabase
+        .schema('attendance')
+        .from('attendance_logs')
+        .insert([attendanceData])
+        .select()
+        .single();
 
-      setRecords(prevRecords => saveRecords([...prevRecords, newRecord]));
-      setCurrentSessionId(newRecord.id);
+      console.log('Supabase response:', { data, error });
+
+      if (error) {
+        console.error('Supabase error details:', error);
+        throw error;
+      }
+
+      if (data) {
+        const newRecord: AttendanceRecord = {
+          id: data.id,
+          name: userName, // Use current user's name
+          loginTime: new Date(data.login_time),
+          logoutTime: null
+        };
+
+        setRecords(prevRecords => [newRecord, ...prevRecords]);
+        setCurrentSessionId(newRecord.id);
+      }
     } catch (error) {
       console.error('Error during clock in:', error);
-      setError('An unexpected error occurred. Please try again.');
+      setError('Failed to clock in. Please try again.');
     }
   };
 
-  const handleClockOut = () => {
+  const handleClockOut = async () => {
     setError(null);
 
     if (!currentSessionId) {
@@ -377,19 +407,29 @@ export default function Home() {
     }
 
     try {
-      setRecords(prevRecords => {
-        const updatedRecords = prevRecords.map(record =>
-          record.id === currentSessionId
-            ? { ...record, logoutTime: new Date() }
-            : record
-        );
-        return saveRecords(updatedRecords);
-      });
+      const { data, error } = await supabase
+        .schema('attendance')
+        .from('attendance_logs')
+        .update({ logout_time: new Date().toISOString() })
+        .eq('id', currentSessionId)
+        .select()
+        .single();
 
-      setCurrentSessionId(null);
+      if (error) throw error;
+
+      if (data) {
+        setRecords(prevRecords =>
+          prevRecords.map(record =>
+            record.id === currentSessionId
+              ? { ...record, logoutTime: new Date(data.logout_time) }
+              : record
+          )
+        );
+        setCurrentSessionId(null);
+      }
     } catch (error) {
       console.error('Error during clock out:', error);
-      setError('An unexpected error occurred. Please try again.');
+      setError('Failed to clock out. Please try again.');
     }
   };
 
@@ -402,14 +442,31 @@ export default function Home() {
     }
   };
 
-  const clearAllData = () => {
-    if (window.confirm('⚠️ WARNING: This will delete ALL attendance records. Are you sure?')) {
+  const clearAllData = async () => {
+    const confirmMessage = user?.role === 'admin'
+      ? '⚠️ WARNING: This will delete ALL attendance records for ALL employees. Are you sure?'
+      : '⚠️ WARNING: This will delete all YOUR attendance records. Are you sure?';
+
+    if (window.confirm(confirmMessage)) {
       try {
-        localStorage.removeItem('attendanceRecords');
+        let query = supabase.schema('attendance').from('attendance_logs').delete();
+
+        // If not admin, only delete own records
+        if (user?.role !== 'admin' && user?.employeeId) {
+          query = query.eq('employee_id', user.employeeId);  // Use employeeId not id
+        } else {
+          // For admin, delete all records
+          query = query.neq('id', '00000000-0000-0000-0000-000000000000');
+        }
+
+        const { error } = await query;
+
+        if (error) throw error;
+
         setRecords([]);
         setCurrentSessionId(null);
-        setError('All attendance records have been cleared.');
-        // Clear the error after 3 seconds
+        setError('Attendance records have been cleared.');
+        // Clear the message after 3 seconds
         setTimeout(() => setError(null), 3000);
       } catch (error) {
         console.error('Error clearing data:', error);

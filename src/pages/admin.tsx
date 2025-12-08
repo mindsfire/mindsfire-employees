@@ -7,6 +7,7 @@ import {
   upsertCustomAccount,
   useAuth
 } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabaseClient';
 
 type EmployeeFormState = {
   id: string;
@@ -64,8 +65,14 @@ export default function AdminDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formState, setFormState] = useState<EmployeeFormState>(initialFormState);
 
-  const loadEmployees = () => {
-    setEmployees(getAllAccounts());
+  const loadEmployees = async () => {
+    try {
+      const accounts = await getAllAccounts();
+      setEmployees(accounts);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      setStatusMessage('Failed to load employees.');
+    }
   };
 
   useEffect(() => {
@@ -147,7 +154,7 @@ export default function AdminDashboard() {
     });
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!formState.firstName.trim() || !formState.employeeId.trim()) {
       setStatusMessage('First Name and Employee ID are required.');
@@ -167,13 +174,18 @@ export default function AdminDashboard() {
       password: formState.password || 'Temp@1234'
     };
 
-    upsertCustomAccount(account);
-    loadEmployees();
-    setStatusMessage(`Saved ${account.name}.`);
-    closeModal();
+    try {
+      await upsertCustomAccount(account);
+      await loadEmployees();
+      setStatusMessage(`Saved ${account.name}.`);
+      closeModal();
+    } catch (error) {
+      console.error('Error saving employee:', error);
+      setStatusMessage('Failed to save employee. Please try again.');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (selectedEmployeeIds.length === 0) return;
 
     // Get the names of employees to be deleted for the confirmation message
@@ -186,14 +198,20 @@ export default function AdminDashboard() {
     const confirmMessage = `Are you sure you want to delete the following employee(s):\n\n${employeeNames}\n\nThis action cannot be undone.`;
 
     if (window.confirm(confirmMessage)) {
-      // Get the actual account IDs from the employees array
-      const accountIdsToDelete = employees
-        .filter(emp => selectedEmployeeIds.includes(emp.employeeId))
-        .map(emp => emp.id);
-      removeCustomAccounts(accountIdsToDelete);
-      setSelectedEmployeeIds([]);
-      loadEmployees();
-      setStatusMessage(`Successfully removed ${selectedEmployeeIds.length} employee(s).`);
+      try {
+        // Get the actual account IDs from the employees array
+        const accountIdsToDelete = employees
+          .filter(emp => selectedEmployeeIds.includes(emp.employeeId))
+          .map(emp => emp.id);
+
+        await removeCustomAccounts(accountIdsToDelete);
+        setSelectedEmployeeIds([]);
+        await loadEmployees();
+        setStatusMessage(`Successfully removed ${selectedEmployeeIds.length} employee(s).`);
+      } catch (error) {
+        console.error('Error deleting employees:', error);
+        setStatusMessage('Failed to delete employees. Please try again.');
+      }
     }
   };
 
