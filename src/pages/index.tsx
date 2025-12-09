@@ -247,10 +247,8 @@ export default function Home() {
           .select('*')
           .order('login_time', { ascending: false });
 
-        // Filter by employee if not admin
-        if (user.role !== 'admin') {
-          query = query.eq('employee_id', user.employeeId);  // Use employeeId not id
-        }
+        // Filter by employee for everyone
+        query = query.eq('employee_id', user.employeeId);
 
         const { data, error } = await query;
 
@@ -319,20 +317,20 @@ export default function Home() {
         // Check for active session (only from today and not auto-closed)
         const currentToday = new Date();
         currentToday.setHours(0, 0, 0, 0);
-        
+
         console.log('All records after auto-close:', autoClosedRecords.map(r => ({
           id: r.id,
           loginTime: r.loginTime,
           logoutTime: r.logoutTime,
           hasLogout: !!r.logoutTime
         })));
-        
+
         const activeSession = autoClosedRecords.find((r: any) => {
           if (!r.logoutTime) {
             const recordDate = new Date(r.loginTime);
             recordDate.setHours(0, 0, 0, 0);
             const isToday = recordDate.getTime() === currentToday.getTime();
-            
+
             console.log('Found unclosed session:', {
               id: r.id,
               loginTime: r.loginTime,
@@ -340,14 +338,14 @@ export default function Home() {
               recordDate: recordDate.toDateString(),
               today: currentToday.toDateString()
             });
-            
+
             return isToday; // Only today's non-auto-closed sessions
           }
           return false;
         });
-        
+
         console.log('Active session found:', activeSession ? activeSession.id : 'none');
-        
+
         if (activeSession) {
           setCurrentSessionId(activeSession.id);
         } else {
@@ -419,15 +417,15 @@ export default function Home() {
       console.log('User ID (UUID):', user.id);
       console.log('Employee ID (text):', user.employeeId);
       console.log('User Name:', userName.trim());
-      
+
       const attendanceData = {
         employee_id: user.employeeId,  // Use employeeId (text) not id (UUID)
         login_time: new Date().toISOString(),
         logout_time: null
       };
-      
+
       console.log('Attendance data to insert:', attendanceData);
-      
+
       const { data, error } = await supabase
         .schema('attendance')
         .from('attendance_logs')
@@ -540,13 +538,14 @@ export default function Home() {
   // Filter records for current user only
   const userRecords = records.filter(record => record.employeeId === user?.employeeId);
 
-  // Determine which records to display based on role
-  // Only show current session or most recent completed session, not previous attendance history
-  const displayRecords: AttendanceRecord[] = currentSessionId 
-    ? records.filter(record => record.id === currentSessionId)
-    : records.length > 0 
-      ? [records[0]] // Show only the most recent record when clocked out
-      : [];
+  // Show only today's records
+  const displayRecords: AttendanceRecord[] = records.filter(record => {
+    const recordDate = new Date(record.loginTime);
+    const today = new Date();
+    return recordDate.getDate() === today.getDate() &&
+      recordDate.getMonth() === today.getMonth() &&
+      recordDate.getFullYear() === today.getFullYear();
+  });
 
   const exportToCSV = () => {
     try {
@@ -698,7 +697,7 @@ export default function Home() {
 
       {/* Stats Cards */}
       <StatsCards
-        records={displayRecords}
+        records={records}
         currentSessionId={currentSessionId}
         userName={userName}
       />
