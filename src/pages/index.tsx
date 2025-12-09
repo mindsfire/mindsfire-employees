@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 export type AttendanceRecord = {
   id: string;
   name: string;
+  employeeId: string;
   loginTime: Date;
   logoutTime: Date | null;
 };
@@ -261,10 +262,37 @@ export default function Home() {
 
         const formattedRecords = (data || []).map((record: any) => ({
           id: record.id,
-          name: userName, // Use current user's name since not stored in DB
+          name: userName, // Temporary, will be updated below
+          employeeId: record.employee_id, // Store employee_id for proper filtering
           loginTime: new Date(record.login_time),
           logoutTime: record.logout_time ? new Date(record.logout_time) : null
         }));
+
+        // Fetch employee names for all records
+        if (formattedRecords.length > 0) {
+          try {
+            const uniqueEmployeeIds = [...new Set(formattedRecords.map(r => r.employeeId))];
+            const { data: employees, error: empError } = await supabase
+              .schema('attendance')
+              .from('employees')
+              .select('employee_id, full_name')
+              .in('employee_id', uniqueEmployeeIds);
+
+            if (!empError && employees) {
+              const employeeMap = employees.reduce((acc, emp) => {
+                acc[emp.employee_id] = emp.full_name;
+                return acc;
+              }, {} as Record<string, string>);
+
+              // Update records with actual employee names
+              formattedRecords.forEach(record => {
+                record.name = employeeMap[record.employeeId] || 'Unknown Employee';
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching employee names:', error);
+          }
+        }
 
         // Auto-close unclosed sessions from previous days
         const today = new Date();
@@ -288,10 +316,42 @@ export default function Home() {
           return record;
         });
 
-        // Check for active session (only from today)
-        const activeSession = autoClosedRecords.find((r: any) => !r.logoutTime);
+        // Check for active session (only from today and not auto-closed)
+        const currentToday = new Date();
+        currentToday.setHours(0, 0, 0, 0);
+        
+        console.log('All records after auto-close:', autoClosedRecords.map(r => ({
+          id: r.id,
+          loginTime: r.loginTime,
+          logoutTime: r.logoutTime,
+          hasLogout: !!r.logoutTime
+        })));
+        
+        const activeSession = autoClosedRecords.find((r: any) => {
+          if (!r.logoutTime) {
+            const recordDate = new Date(r.loginTime);
+            recordDate.setHours(0, 0, 0, 0);
+            const isToday = recordDate.getTime() === currentToday.getTime();
+            
+            console.log('Found unclosed session:', {
+              id: r.id,
+              loginTime: r.loginTime,
+              isToday,
+              recordDate: recordDate.toDateString(),
+              today: currentToday.toDateString()
+            });
+            
+            return isToday; // Only today's non-auto-closed sessions
+          }
+          return false;
+        });
+        
+        console.log('Active session found:', activeSession ? activeSession.id : 'none');
+        
         if (activeSession) {
           setCurrentSessionId(activeSession.id);
+        } else {
+          setCurrentSessionId(null); // Explicitly clear if no active session
         }
 
         // Apply Retention Policy
@@ -324,11 +384,11 @@ export default function Home() {
   // Check attendance compliance when records change
   useEffect(() => {
     if (userName && records.length > 0) {
-      const userRecords = records.filter(record => record.name === userName);
+      const userRecords = records.filter(record => record.employeeId === user?.employeeId);
       const warnings = checkAttendanceCompliance(userRecords, userName);
       setComplianceWarnings(warnings);
     }
-  }, [records, userName]);
+  }, [records, userName, user?.employeeId]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -353,6 +413,7 @@ export default function Home() {
       return;
     }
 
+    // Always create a new record when clocking in, even for same day
     try {
       console.log('Clocking in with user:', user);
       console.log('User ID (UUID):', user.id);
@@ -385,6 +446,7 @@ export default function Home() {
         const newRecord: AttendanceRecord = {
           id: data.id,
           name: userName, // Use current user's name
+          employeeId: user.employeeId, // Add employeeId field
           loginTime: new Date(data.login_time),
           logoutTime: null
         };
@@ -476,10 +538,15 @@ export default function Home() {
   };
 
   // Filter records for current user only
-  const userRecords = records.filter(record => record.name === userName);
+  const userRecords = records.filter(record => record.employeeId === user?.employeeId);
 
   // Determine which records to display based on role
-  const displayRecords = user?.role === 'admin' ? records : userRecords;
+  // Only show current session or most recent completed session, not previous attendance history
+  const displayRecords: AttendanceRecord[] = currentSessionId 
+    ? records.filter(record => record.id === currentSessionId)
+    : records.length > 0 
+      ? [records[0]] // Show only the most recent record when clocked out
+      : [];
 
   const exportToCSV = () => {
     try {
@@ -631,7 +698,7 @@ export default function Home() {
 
       {/* Stats Cards */}
       <StatsCards
-        records={records}
+        records={displayRecords}
         currentSessionId={currentSessionId}
         userName={userName}
       />
