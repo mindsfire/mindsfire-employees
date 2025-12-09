@@ -9,6 +9,7 @@ export type AttendanceRecord = {
   id: string;
   name: string;
   employeeId: string;
+  department?: 'IT' | 'Virtual Assistant' | 'Sales';
   loginTime: Date;
   logoutTime: Date | null;
 };
@@ -262,6 +263,7 @@ export default function Home() {
           id: record.id,
           name: userName, // Temporary, will be updated below
           employeeId: record.employee_id, // Store employee_id for proper filtering
+          department: record.department, // Include department from database
           loginTime: new Date(record.login_time),
           logoutTime: record.logout_time ? new Date(record.logout_time) : null
         }));
@@ -420,6 +422,7 @@ export default function Home() {
 
       const attendanceData = {
         employee_id: user.employeeId,  // Use employeeId (text) not id (UUID)
+        department: user.department || 'IT',  // Store department from user
         login_time: new Date().toISOString(),
         logout_time: null
       };
@@ -735,6 +738,7 @@ export default function Home() {
                   <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Login Time</th>
                   <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Logout Time</th>
                   <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Duration</th>
+                  <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Department</th>
                   <th style={{ padding: '10px', textAlign: 'left', border: '1px solid #ddd' }}>Status</th>
                 </tr>
               </thead>
@@ -751,6 +755,9 @@ export default function Home() {
                     <td style={{ padding: '10px', border: '1px solid #ddd' }}>{formatDate(record.logoutTime)}</td>
                     <td style={{ padding: '10px', border: '1px solid #ddd' }}>
                       {calculateDuration(record.loginTime, record.logoutTime)}
+                    </td>
+                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                      {record.department || 'IT'}
                     </td>
                     <td style={{ padding: '10px', border: '1px solid #ddd' }}>
                       {getStatus(record.loginTime, record.logoutTime).map((status, idx) => (
