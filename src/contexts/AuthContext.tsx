@@ -8,6 +8,7 @@ export type User = {
   firstName?: string;
   lastName?: string;
   role: 'admin' | 'employee';
+  department?: 'IT' | 'Virtual Assistant' | 'Sales';
 };
 
 export type MockAccount = User & {
@@ -40,7 +41,7 @@ export const DEFAULT_ACCOUNTS: MockAccount[] = [
     role: 'admin',
     password: 'Admin@123',
     email: 'admin@example.com',
-    department: 'Operations',
+    department: 'IT',
     joiningDate: '2023-01-10'
   }
 ];

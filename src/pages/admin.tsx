@@ -15,6 +15,7 @@ type EmployeeFormState = {
   lastName: string;
   employeeId: string;
   role: 'admin' | 'employee';
+  department: 'IT' | 'Virtual Assistant' | 'Sales';
   joiningDate: string;
   password: string;
 };
@@ -25,6 +26,7 @@ const initialFormState: EmployeeFormState = {
   lastName: '',
   employeeId: '',
   role: 'employee',
+  department: 'IT',
   joiningDate: '',
   password: ''
 };
@@ -126,6 +128,7 @@ export default function AdminDashboard() {
       lastName: lName,
       employeeId: account.employeeId,
       role: account.role,
+      department: account.department || 'IT',
       joiningDate: account.joiningDate || '',
       password: account.password
     });
@@ -170,6 +173,7 @@ export default function AdminDashboard() {
       firstName: formState.firstName.trim(),
       lastName: formState.lastName.trim(),
       role: formState.role,
+      department: formState.department,
       joiningDate: formState.joiningDate,
       password: formState.password || 'Temp@1234'
     };
@@ -313,6 +317,7 @@ export default function AdminDashboard() {
                     </label>
                     <div className="flex items-center space-x-8">
                       <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide w-32 text-center">Access Level</span>
+                      <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide w-32 text-center">Department</span>
                       <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide w-32 text-center">Join Date</span>
                       <span className="w-20 text-center">
                         <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Actions</span>
@@ -343,6 +348,7 @@ export default function AdminDashboard() {
                           }`}>
                           {account.role === 'admin' ? 'Administrator' : 'Employee'}
                         </span>
+                        <span className="text-sm text-gray-600 w-32 text-center">{account.department || 'IT'}</span>
                         <span className="text-sm text-gray-600 w-32 text-center">{formatDate(account.joiningDate || '')}</span>
                         <div className="w-20 text-center">
                           <button
@@ -463,6 +469,22 @@ export default function AdminDashboard() {
                 >
                   <option value="employee">Employee</option>
                   <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Department
+                </label>
+                <select
+                  name="department"
+                  value={formState.department}
+                  onChange={handleFormChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="IT">IT</option>
+                  <option value="Virtual Assistant">Virtual Assistant</option>
+                  <option value="Sales">Sales</option>
                 </select>
               </div>
 
