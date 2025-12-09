@@ -23,7 +23,6 @@ type AuthContextType = {
   login: (employeeId: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   loading: boolean;
-  testSupabaseConnection?: () => Promise<{ data?: any; error?: any }>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -237,26 +236,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  // Debug function to test Supabase connection
-  const testSupabaseConnection = async () => {
-    try {
-      console.log('Testing Supabase connection...');
-      const { data, error } = await supabase
-        .schema('attendance')
-        .from('employees')
-        .select('employee_id, full_name, role')
-        .limit(5);
-      
-      console.log('Supabase test result:', { data, error });
-      return { data, error };
-    } catch (err) {
-      console.error('Supabase connection error:', err);
-      return { error: err };
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, testSupabaseConnection }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
