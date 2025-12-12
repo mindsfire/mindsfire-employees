@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import {
   MockAccount,
@@ -8,6 +8,7 @@ import {
   useAuth
 } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import Layout from '../components/Layout';
 
 type EmployeeFormState = {
   id: string;
@@ -67,15 +68,40 @@ export default function AdminDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formState, setFormState] = useState<EmployeeFormState>(initialFormState);
 
-  const loadEmployees = async () => {
+  const handleLogoClick = () => {
+    console.log('Logo clicked in admin panel');
+    // Close any open modals
+    setIsModalOpen(false);
+    // Reset form state
+    setFormState(initialFormState);
+    // Clear any selections
+    setSelectedEmployeeIds([]);
+    // Clear any status messages
+    setStatusMessage('');
+    // Navigate back to home page
+    router.push('/');
+  };
+
+  const loadEmployees = useCallback(async () => {
     try {
+      console.log('Fetching employee accounts...');
       const accounts = await getAllAccounts();
+      console.log('Fetched accounts:', accounts);
       setEmployees(accounts);
+      
+      // Log the first employee's joining date for debugging
+      if (accounts.length > 0) {
+        console.log('First employee data:', {
+          name: accounts[0].name,
+          joiningDate: accounts[0].joiningDate,
+          formattedDate: formatDate(accounts[0].joiningDate || '')
+        });
+      }
     } catch (error) {
       console.error('Error loading employees:', error);
       setStatusMessage('Failed to load employees.');
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -83,7 +109,16 @@ export default function AdminDashboard() {
     } else if (!loading && user?.role !== 'admin') {
       router.push('/');
     } else if (!loading && user?.role === 'admin') {
-      loadEmployees();
+      // Load employees asynchronously to avoid setState in effect
+      const loadEmployeesAsync = async () => {
+        try {
+          const accounts = await getAllAccounts();
+          setEmployees(accounts);
+        } catch (error) {
+          console.error('Failed to load employees:', error);
+        }
+      };
+      loadEmployeesAsync();
     }
   }, [user, loading, router]);
 
@@ -233,10 +268,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div>
-      {/* Admin Navigation Bar */}
-
-
+    <Layout onLogoClick={handleLogoClick}>
       {/* Admin Header Stats */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -528,6 +560,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   );
 }

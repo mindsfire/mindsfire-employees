@@ -4,11 +4,21 @@ import Image from 'next/image';
 
 interface NavbarProps {
     onMenuClick: () => void;
+    onLogoClick?: () => void;
 }
 
-export default function Navbar({ onMenuClick }: NavbarProps) {
+export default function Navbar({ onMenuClick, onLogoClick }: NavbarProps) {
     const { user, logout } = useAuth();
     const router = useRouter();
+
+    const handleLogoClick = () => {
+        console.log('Navbar logo clicked');
+        if (onLogoClick) {
+            onLogoClick();
+        } else {
+            console.log('No onLogoClick handler provided');
+        }
+    };
 
     // Get user initials for avatar
     const getInitials = (name: string) => {
@@ -45,7 +55,11 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                         </button>
 
                         {/* Mindsfire Logo */}
-                        <div className="flex items-center">
+                        <div 
+                            className="flex items-center cursor-pointer hover:opacity-80 transition-opacity p-2 -m-2"
+                            onClick={handleLogoClick}
+                            style={{ zIndex: 10 }}
+                        >
                             <Image
                                 src="/mindsfire-logo.png"
                                 alt="Mindsfire Logo"

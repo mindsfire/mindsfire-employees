@@ -57,7 +57,7 @@ class ErrorBoundary extends Component<Props, State> {
               Something went wrong
             </h2>
             <p style={{ color: '#666', marginBottom: '24px' }}>
-              An unexpected error occurred. This has been logged and we'll work to fix it.
+              An unexpected error occurred. This has been logged and we&apos;ll work to fix it.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button

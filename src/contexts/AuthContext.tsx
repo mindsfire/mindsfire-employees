@@ -73,18 +73,35 @@ export const getAllAccounts = async (): Promise<MockAccount[]> => {
 
     if (error) throw error;
 
-    return data?.map(emp => ({
-      id: emp.employee_id,
-      employeeId: emp.employee_id,
-      name: emp.full_name || `${emp.first_name} ${emp.last_name || ''}`.trim(),
-      firstName: emp.first_name,
-      lastName: emp.last_name,
-      role: emp.role as 'admin' | 'employee',
-      password: emp.password || '',
-      department: emp.department || 'N/A',
-      email: emp.email || '',
-      status: emp.status || 'active'
-    })) || [];
+    return data?.map(emp => {
+      // Format the joining_date to YYYY-MM-DD format if it exists
+      let formattedJoiningDate = '';
+      if (emp.joining_date) {
+        try {
+          // If it's a string, use it as is, otherwise format the Date object
+          formattedJoiningDate = typeof emp.joining_date === 'string' 
+            ? emp.joining_date 
+            : new Date(emp.joining_date).toISOString().split('T')[0];
+        } catch (e) {
+          console.error('Error formatting joining date:', e);
+          formattedJoiningDate = '';
+        }
+      }
+      
+      return {
+        id: emp.employee_id,
+        employeeId: emp.employee_id,
+        name: emp.full_name || `${emp.first_name} ${emp.last_name || ''}`.trim(),
+        firstName: emp.first_name,
+        lastName: emp.last_name,
+        role: emp.role as 'admin' | 'employee',
+        password: emp.password || '',
+        department: emp.department || 'N/A',
+        email: emp.email || '',
+        status: emp.status || 'active',
+        joiningDate: formattedJoiningDate
+      };
+    }) || [];
   } catch (error) {
     console.error('Error fetching employees:', error);
     return [];
@@ -114,6 +131,7 @@ export const upsertCustomAccount = async (account: MockAccount): Promise<void> =
       full_name: account.name,
       email: account.email,
       department: account.department,
+      joining_date: account.joiningDate || null,
       status: account.status || 'active',
       password: account.password || 'defaultPassword123',
       role: account.role === 'admin' ? 'admin' : 'employee',
@@ -223,7 +241,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(authenticatedUser);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(authenticatedUser));
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
       return {
         success: false,

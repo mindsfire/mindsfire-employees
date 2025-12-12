@@ -80,7 +80,7 @@ export default function StatsCards({ records, currentSessionId, userName }: Stat
       {/* Today's Status Card */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-gray-500">Today's Status</h3>
+          <h3 className="text-sm font-medium text-gray-500">Today&apos;s Status</h3>
           <div className={`w-3 h-3 rounded-full ${currentSessionId ? 'bg-green-500' : 'bg-gray-300'}`}></div>
         </div>
         <div className="text-2xl font-bold text-gray-900">

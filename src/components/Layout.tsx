@@ -4,9 +4,10 @@ import Sidebar from './Sidebar';
 
 interface LayoutProps {
     children: ReactNode;
+    onLogoClick?: () => void;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children, onLogoClick }: LayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const toggleSidebar = () => {
@@ -20,7 +21,7 @@ export default function Layout({ children }: LayoutProps) {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Navbar */}
-            <Navbar onMenuClick={toggleSidebar} />
+            <Navbar onMenuClick={toggleSidebar} onLogoClick={onLogoClick} />
 
             {/* Sidebar */}
             <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />

@@ -67,7 +67,7 @@ const getStatus = (loginTime: Date, logoutTime: Date | null): string[] => {
   const loginHour = loginTime.getHours();
   const loginMinute = loginTime.getMinutes();
 
-  let status: string[] = [];
+  const status: string[] = [];
 
   // Entry Logic
   // Before 9:30 AM = Early Entry
@@ -258,7 +258,14 @@ export default function Home() {
           return;
         }
 
-        const formattedRecords = (data || []).map((record: any) => ({
+        interface DatabaseRecord {
+  id: string;
+  employee_id: string;
+  login_time: string;
+  logout_time: string | null;
+}
+
+        const formattedRecords = (data || []).map((record: DatabaseRecord) => ({
           id: record.id,
           name: userName, // Temporary, will be updated below
           employeeId: record.employee_id, // Store employee_id for proper filtering
@@ -325,7 +332,7 @@ export default function Home() {
           hasLogout: !!r.logoutTime
         })));
 
-        const activeSession = autoClosedRecords.find((r: any) => {
+        const activeSession = autoClosedRecords.find((r: AttendanceRecord) => {
           if (!r.logoutTime) {
             const recordDate = new Date(r.loginTime);
             recordDate.setHours(0, 0, 0, 0);
@@ -538,14 +545,8 @@ export default function Home() {
   // Filter records for current user only
   const userRecords = records.filter(record => record.employeeId === user?.employeeId);
 
-  // Show only today's records
-  const displayRecords: AttendanceRecord[] = records.filter(record => {
-    const recordDate = new Date(record.loginTime);
-    const today = new Date();
-    return recordDate.getDate() === today.getDate() &&
-      recordDate.getMonth() === today.getMonth() &&
-      recordDate.getFullYear() === today.getFullYear();
-  });
+  // Show all records (old behavior)
+  const displayRecords: AttendanceRecord[] = records;
 
   const exportToCSV = () => {
     try {

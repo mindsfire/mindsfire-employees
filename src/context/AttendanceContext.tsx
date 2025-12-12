@@ -30,7 +30,14 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         const parsedRecords = JSON.parse(savedRecords);
         // Convert string dates back to Date objects
-        const recordsWithDates = parsedRecords.map((record: any) => ({
+        interface RawAttendanceRecord {
+  id: string;
+  name: string;
+  loginTime: string;
+  logoutTime: string | null;
+}
+
+        const recordsWithDates = parsedRecords.map((record: RawAttendanceRecord) => ({
           ...record,
           loginTime: new Date(record.loginTime),
           logoutTime: record.logoutTime ? new Date(record.logoutTime) : null,

@@ -62,7 +62,7 @@ export const loadRecordsFromStorage = (): AttendanceRecord[] => {
   
   try {
     const parsedRecords = JSON.parse(savedRecords);
-    return parsedRecords.map((record: any) => ({
+    return parsedRecords.map((record: AttendanceRecord) => ({
       ...record,
       loginTime: new Date(record.loginTime),
       logoutTime: record.logoutTime ? new Date(record.logoutTime) : null,
