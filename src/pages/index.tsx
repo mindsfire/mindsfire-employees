@@ -374,7 +374,7 @@ export default function Home() {
           }
         }
 
-        setRecords(validRecords);
+        setRecords(validRecords.sort((a, b) => b.loginTime.getTime() - a.loginTime.getTime()));
       } catch (error) {
         console.error('Error loading records:', error);
         setError('Failed to load attendance records. Some data might be corrupted.');
@@ -456,7 +456,11 @@ export default function Home() {
           logoutTime: null
         };
 
-        setRecords(prevRecords => [newRecord, ...prevRecords]);
+        setRecords(prevRecords => {
+          // Add new record and sort by login_time descending
+          const updatedRecords = [newRecord, ...prevRecords];
+          return updatedRecords.sort((a, b) => b.loginTime.getTime() - a.loginTime.getTime());
+        });
         setCurrentSessionId(newRecord.id);
       }
     } catch (error) {
@@ -545,8 +549,8 @@ export default function Home() {
   // Filter records for current user only
   const userRecords = records.filter(record => record.employeeId === user?.employeeId);
 
-  // Show all records (old behavior)
-  const displayRecords: AttendanceRecord[] = records;
+  // Show all records sorted by latest first
+  const displayRecords: AttendanceRecord[] = [...records].sort((a, b) => b.loginTime.getTime() - a.loginTime.getTime());
 
   const exportToCSV = () => {
     try {
@@ -740,7 +744,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                {[...displayRecords].reverse().map((record) => (
+                {displayRecords.map((record) => (
                   <tr
                     key={record.id}
                     style={{
