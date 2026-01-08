@@ -64,8 +64,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json({ message: 'User created successfully', user: authData.user })
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error creating employee:', error)
-        return res.status(500).json({ message: error.message || 'Internal Server Error' })
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        return res.status(500).json({ message: errorMessage || 'Internal Server Error' })
     }
 }

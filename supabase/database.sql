@@ -4,9 +4,7 @@
 -- WARNING: Running this will WIPE existing data if you drop tables first.
 -- logical flow: Drop old -> Create new
 
-DROP TABLE IF EXISTS attendance.attendance_logs;
-DROP TABLE IF EXISTS attendance.employees;
-DROP SCHEMA IF EXISTS attendance;
+
 
 -- 1. Create Schema
 CREATE SCHEMA IF NOT EXISTS attendance;

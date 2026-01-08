@@ -4,7 +4,6 @@ import {
   MockAccount,
   getAllAccounts,
   removeCustomAccounts,
-  upsertCustomAccount,
   useAuth
 } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
@@ -128,7 +127,7 @@ export default function AdminDashboard() {
       lastName: lName,
       email: account.email || '',
       role: account.role,
-      department: (account.department as any) || 'IT',
+      department: account.department as 'IT' | 'Virtual Assistant' | 'Sales' || 'IT',
       joiningDate: account.joiningDate || '',
       password: '' // Don't show password
     });
@@ -187,9 +186,10 @@ export default function AdminDashboard() {
       await loadEmployees();
       setStatusMessage(`Successfully saved ${fullName}.`);
       closeModal();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving:', error);
-      setStatusMessage(`Failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setStatusMessage(`Failed: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
