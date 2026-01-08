@@ -50,8 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 full_name: fullName,
                 role: role || 'employee',
                 department: department || '',
-                password: password, // Storing purely for reference/admin visibility as requested, though usually discouraged
-                // employee_id: employeeId // If you still have this column and want to keep it, uncomment. But we moved to email.
+                // password: password, // removed storage as requested
             })
 
         if (dbError) {

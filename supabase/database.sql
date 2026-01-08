@@ -19,7 +19,6 @@ CREATE TABLE attendance.employees (
   department text,
   joining_date date,
   status text DEFAULT 'active',
-  password text NOT NULL, -- Stored locally just for reference/simple auth if needed involved, but mainly relies on Supabase Auth
   role text NOT NULL DEFAULT 'employee',
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -62,7 +61,6 @@ INSERT INTO attendance.employees (
   first_name, 
   last_name, 
   full_name,
-  password, 
   role,
   department
 ) VALUES (
@@ -70,7 +68,6 @@ INSERT INTO attendance.employees (
   'Admin',
   'User',
   'System Admin',
-  'SecretPass123',       -- CHANGE THIS (Local reference only)
   'admin',
   'IT'
 );

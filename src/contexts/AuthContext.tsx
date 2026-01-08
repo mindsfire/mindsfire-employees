@@ -13,7 +13,6 @@ export type User = {
 };
 
 export type MockAccount = User & {
-  password?: string; // Optional because we might not retrieve it for all
   department?: string;
   joiningDate?: string;
   status?: 'active' | 'inactive';
@@ -27,7 +26,6 @@ type DatabaseEmployee = {
   last_name?: string;
   role: string;
   department?: string;
-  password?: string;
   status?: string;
   joining_date?: string | Date;
   created_at?: string;
@@ -89,7 +87,6 @@ export const getAllAccounts = async (): Promise<MockAccount[]> => {
         firstName: emp.first_name,
         lastName: emp.last_name,
         role: emp.role as 'admin' | 'employee',
-        password: emp.password || '', // Optional/Legacy
         department: emp.department || 'N/A',
         status: emp.status || 'active',
         joiningDate: formattedJoiningDate
@@ -125,7 +122,6 @@ export const upsertCustomAccount = async (account: MockAccount): Promise<void> =
       department: account.department,
       joining_date: account.joiningDate || null,
       status: account.status || 'active',
-      password: account.password || 'defaultPassword123',
       role: account.role === 'admin' ? 'admin' : 'employee',
     };
 

@@ -129,7 +129,7 @@ export default function AdminDashboard() {
       role: account.role,
       department: account.department as 'IT' | 'Virtual Assistant' | 'Sales' || 'IT',
       joiningDate: account.joiningDate || '',
-      password: '' // Don't show password
+      password: '' // No longer stored/shown for existing users
     });
     setIsModalOpen(true);
   };
@@ -144,14 +144,18 @@ export default function AdminDashboard() {
     const { name, value } = event.target;
     setFormState(prev => {
       const newState = { ...prev, [name]: value };
-      // Only auto-generate password for new users when name changes
+
+      // Auto-generate password for new users when name fields change
       if (!prev.id && (name === 'firstName' || name === 'lastName')) {
+        // Use the updated values from newState
         newState.password = generatePassword(newState.firstName, newState.lastName);
       }
-      // If manually changing password field, keep the manual value
-      if (name === 'password' && value) {
+
+      // If manually changing password field (only for NEW user), keep the manual value
+      if (name === 'password' && !prev.id) {
         newState.password = value;
       }
+
       return newState;
     });
   };
@@ -335,17 +339,25 @@ export default function AdminDashboard() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Password</label>
-                <input 
-                  name="password" 
-                  value={formState.password} 
-                  onChange={handleFormChange} 
-                  placeholder="Auto-generated" 
-                  className="w-full border rounded p-2 bg-gray-50" 
-                  readOnly={!!formState.id}
-                />
-                {!formState.id && <p className="text-xs text-gray-500">Auto-generated for Supabase login.</p>}
-                {formState.id && <p className="text-xs text-blue-600 font-medium">Password: {formState.password}</p>}
+                <label className="block text-sm font-medium text-gray-700">
+                  {formState.id ? 'Password' : 'Password'}
+                </label>
+                {!formState.id ? (
+                  <>
+                    <input
+                      name="password"
+                      value={formState.password}
+                      onChange={handleFormChange}
+                      placeholder="Auto-generated"
+                      className="w-full border rounded p-2 bg-gray-50"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Auto-generated for Supabase login. Share this with the employee.</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500 italic p-2 bg-gray-50 rounded border border-dashed text-center">
+                    Passwords are not recoverable once saved for security reasons.
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end space-x-3">
