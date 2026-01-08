@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { createClient } from '../utils/supabase/client';
 
 export type User = {
   id: string;
-  employeeId: string;
+  email: string; // Primary Key
   name: string;
   firstName?: string;
   lastName?: string;
@@ -12,8 +12,7 @@ export type User = {
 };
 
 export type MockAccount = User & {
-  password: string;
-  email?: string;
+  password?: string; // Optional because we might not retrieve it for all
   department?: string;
   joiningDate?: string;
   status?: 'active' | 'inactive';
@@ -21,7 +20,7 @@ export type MockAccount = User & {
 
 type AuthContextType = {
   user: User | null;
-  login: (employeeId: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   loading: boolean;
 };
@@ -31,32 +30,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const STORAGE_KEY = 'authUser';
 export const CUSTOM_ACCOUNTS_STORAGE_KEY = 'customEmployeeAccounts';
 
-export const DEFAULT_ACCOUNTS: MockAccount[] = [
-  {
-    id: '1',
-    employeeId: 'admin',
-    name: 'Admin User',
-    firstName: 'Admin',
-    lastName: 'User',
-    role: 'admin',
-    password: 'Admin@123',
-    email: 'admin@example.com',
-    department: 'IT',
-    joiningDate: '2023-01-10'
-  }
-];
+// Initialize Supabase client
+const supabase = createClient();
 
 export const loadCustomAccounts = (): MockAccount[] => {
-  if (typeof window === 'undefined') {
-    return [];
-  }
-
+  if (typeof window === 'undefined') return [];
   try {
     const stored = localStorage.getItem(CUSTOM_ACCOUNTS_STORAGE_KEY);
-    if (!stored) return [];
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
+    return stored ? JSON.parse(stored) : [];
   } catch (error) {
     console.error('Failed to load custom accounts:', error);
     return [];
@@ -65,6 +46,7 @@ export const loadCustomAccounts = (): MockAccount[] => {
 
 export const getAllAccounts = async (): Promise<MockAccount[]> => {
   try {
+    // We now use the 'email' column instead of employee_id
     const { data, error } = await supabase
       .schema('attendance')
       .from('employees')
@@ -74,30 +56,26 @@ export const getAllAccounts = async (): Promise<MockAccount[]> => {
     if (error) throw error;
 
     return data?.map(emp => {
-      // Format the joining_date to YYYY-MM-DD format if it exists
       let formattedJoiningDate = '';
       if (emp.joining_date) {
         try {
-          // If it's a string, use it as is, otherwise format the Date object
-          formattedJoiningDate = typeof emp.joining_date === 'string' 
-            ? emp.joining_date 
+          formattedJoiningDate = typeof emp.joining_date === 'string'
+            ? emp.joining_date
             : new Date(emp.joining_date).toISOString().split('T')[0];
-        } catch (e) {
-          console.error('Error formatting joining date:', e);
+        } catch {
           formattedJoiningDate = '';
         }
       }
-      
+
       return {
-        id: emp.employee_id,
-        employeeId: emp.employee_id,
+        id: emp.id, // UUID
+        email: emp.email,
         name: emp.full_name || `${emp.first_name} ${emp.last_name || ''}`.trim(),
         firstName: emp.first_name,
         lastName: emp.last_name,
         role: emp.role as 'admin' | 'employee',
-        password: emp.password || '',
+        password: emp.password || '', // Optional/Legacy
         department: emp.department || 'N/A',
-        email: emp.email || '',
         status: emp.status || 'active',
         joiningDate: formattedJoiningDate
       };
@@ -108,28 +86,27 @@ export const getAllAccounts = async (): Promise<MockAccount[]> => {
   }
 };
 
-export const saveCustomAccounts = (accounts: MockAccount[]) => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(CUSTOM_ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
-};
-
+// Function using API route should likely replace this, but keeping for compatibility if admin.tsx calls it directly
 export const upsertCustomAccount = async (account: MockAccount): Promise<void> => {
   try {
-    const normalizedEmployeeId = account.employeeId.trim().toLowerCase();
+    if (!account.email) throw new Error("Email is required");
 
+    const normalizedEmail = account.email.trim().toLowerCase();
+
+    // Check by EMAIL now
     const { data: existing } = await supabase
       .schema('attendance')
       .from('employees')
-      .select('id')
-      .eq('employee_id', normalizedEmployeeId)
+      .select('email') // query by email
+      .eq('email', normalizedEmail)
       .single();
 
     const employeeData = {
-      employee_id: normalizedEmployeeId,
+      // No employee_id
       first_name: account.firstName || '',
       last_name: account.lastName || '',
       full_name: account.name,
-      email: account.email,
+      email: normalizedEmail,
       department: account.department,
       joining_date: account.joiningDate || null,
       status: account.status || 'active',
@@ -142,7 +119,7 @@ export const upsertCustomAccount = async (account: MockAccount): Promise<void> =
         .schema('attendance')
         .from('employees')
         .update(employeeData)
-        .eq('id', existing.id);
+        .eq('email', normalizedEmail); // update by email
 
       if (error) throw error;
     } else {
@@ -159,13 +136,13 @@ export const upsertCustomAccount = async (account: MockAccount): Promise<void> =
   }
 };
 
-export const removeCustomAccounts = async (employeeIds: string[]): Promise<void> => {
+export const removeCustomAccounts = async (emails: string[]): Promise<void> => {
   try {
     const { error } = await supabase
       .schema('attendance')
       .from('employees')
       .delete()
-      .in('employee_id', employeeIds);
+      .in('email', emails); // Delete by email
 
     if (error) throw error;
   } catch (error) {
@@ -179,80 +156,138 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem(STORAGE_KEY);
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    let mounted = true;
+
+    async function getSession() {
+      try {
+        console.log('AuthContext: Initial session check...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('AuthContext: Error getting session', error);
+        }
+
+        console.log('AuthContext: Session retrieved:', session?.user?.email);
+
+        if (session?.user?.email) {
+          console.log('AuthContext: Fetching employee details for', session.user.email);
+          const { data: employee, error: dbError } = await supabase
+            .schema('attendance')
+            .from('employees')
+            .select('*')
+            .eq('email', session.user.email)
+            .single();
+
+          if (dbError) {
+            console.error('AuthContext: Database fetch error', dbError);
+          }
+
+          if (mounted) {
+            if (employee) {
+              console.log('AuthContext: User found in DB', employee);
+              setUser({
+                id: employee.id,
+                email: employee.email,
+                name: employee.full_name,
+                role: employee.role,
+                firstName: employee.first_name,
+                lastName: employee.last_name,
+                department: employee.department
+              });
+            } else {
+              if (mounted) {
+                console.warn('AuthContext: User authenticated but NOT found in matching employee table.');
+                setUser(null);
+              }
+            }
+          }
+        } else {
+          console.log('AuthContext: No session found.');
+          if (mounted) setUser(null);
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+      } finally {
+        if (mounted) setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to restore auth session:', error);
-      localStorage.removeItem(STORAGE_KEY);
-    } finally {
-      setLoading(false);
     }
+
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(`AuthContext: Auth event [${event}]`, session?.user?.email);
+      if (session?.user?.email) {
+        // First try to find existing employee
+        const { data: employee } = await supabase
+          .schema('attendance')
+          .from('employees')
+          .select('*')
+          .eq('email', session.user.email)
+          .single();
+
+        if (employee) {
+          console.log('AuthContext: AuthStateChange user set', employee.full_name);
+          setUser({
+            id: employee.id,
+            email: employee.email,
+            name: employee.full_name,
+            role: employee.role,
+            firstName: employee.first_name,
+            lastName: employee.last_name,
+            department: employee.department
+          });
+        } else if (event === 'SIGNED_IN') {
+          // Auto-create employee if doesn't exist
+          console.log('AuthContext: Creating new employee for', session.user.email);
+          const { data: newEmployee } = await supabase
+            .schema('attendance')
+            .from('employees')
+            .insert({
+              email: session.user.email,
+              full_name: session.user.user_metadata?.full_name || session.user.email,
+              first_name: session.user.user_metadata?.first_name || '',
+              last_name: session.user.user_metadata?.last_name || '',
+              role: 'employee',
+              department: 'General'
+            })
+            .select()
+            .single();
+
+          if (newEmployee) {
+            console.log('AuthContext: New employee created', newEmployee.full_name);
+            setUser({
+              id: newEmployee.id,
+              email: newEmployee.email,
+              name: newEmployee.full_name,
+              role: newEmployee.role,
+              firstName: newEmployee.first_name,
+              lastName: newEmployee.last_name,
+              department: newEmployee.department
+            });
+          }
+        }
+      } else {
+        console.log('AuthContext: AuthStateChange user null');
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (employeeId: string, password: string) => {
-    try {
-      const normalizedId = employeeId.trim().toLowerCase();
-      console.log('Attempting login with employee_id:', normalizedId);
-
-      // Query employee from employees table
-      const { data, error } = await supabase
-        .schema('attendance')
-        .from('employees')
-        .select('*')
-        .eq('employee_id', normalizedId)
-        .single();
-
-      console.log('Supabase query result:', { data, error });
-
-      if (error || !data) {
-        console.log('Employee not found:', normalizedId, 'Error:', error);
-        return {
-          success: false,
-          error: 'Employee ID not found. Please check with your administrator.'
-        };
-      }
-
-      console.log('Employee found:', data);
-      console.log('Stored password:', data.password);
-      console.log('Provided password:', password);
-
-      const storedPassword = data.password;
-
-      if (!storedPassword || storedPassword !== password) {
-        console.log('Password mismatch');
-        return {
-          success: false,
-          error: 'Incorrect password. Please try again.'
-        };
-      }
-
-      const authenticatedUser: User = {
-        id: data.id,
-        employeeId: data.employee_id,
-        name: data.full_name,
-        role: data.role
-      };
-
-      console.log('Login successful:', authenticatedUser);
-
-      setUser(authenticatedUser);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(authenticatedUser));
-      return { success: true };
-    } catch (error: unknown) {
-      console.error('Login error:', error);
-      return {
-        success: false,
-        error: 'Invalid credentials. Please try again.'
-      };
-    }
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
   };
 
   return (

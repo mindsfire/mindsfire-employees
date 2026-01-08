@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 export type AttendanceRecord = {
   id: string;
   name: string;
-  employeeId: string;
+  email: string;
   loginTime: Date;
   logoutTime: Date | null;
 };
@@ -248,7 +248,7 @@ export default function Home() {
           .order('login_time', { ascending: false });
 
         // Filter by employee for everyone
-        query = query.eq('employee_id', user.employeeId);
+        query = query.eq('email', user.email);
 
         const { data, error } = await query;
 
@@ -259,16 +259,16 @@ export default function Home() {
         }
 
         interface DatabaseRecord {
-  id: string;
-  employee_id: string;
-  login_time: string;
-  logout_time: string | null;
-}
+          id: string;
+          email: string;
+          login_time: string;
+          logout_time: string | null;
+        }
 
         const formattedRecords = (data || []).map((record: DatabaseRecord) => ({
           id: record.id,
           name: userName, // Temporary, will be updated below
-          employeeId: record.employee_id, // Store employee_id for proper filtering
+          email: record.email, // Store email for proper filtering
           loginTime: new Date(record.login_time),
           logoutTime: record.logout_time ? new Date(record.logout_time) : null
         }));
@@ -276,22 +276,22 @@ export default function Home() {
         // Fetch employee names for all records
         if (formattedRecords.length > 0) {
           try {
-            const uniqueEmployeeIds = [...new Set(formattedRecords.map(r => r.employeeId))];
+            const uniqueEmails = [...new Set(formattedRecords.map(r => r.email))];
             const { data: employees, error: empError } = await supabase
               .schema('attendance')
               .from('employees')
-              .select('employee_id, full_name')
-              .in('employee_id', uniqueEmployeeIds);
+              .select('email, full_name')
+              .in('email', uniqueEmails);
 
             if (!empError && employees) {
               const employeeMap = employees.reduce((acc, emp) => {
-                acc[emp.employee_id] = emp.full_name;
+                acc[emp.email] = emp.full_name;
                 return acc;
               }, {} as Record<string, string>);
 
               // Update records with actual employee names
               formattedRecords.forEach(record => {
-                record.name = employeeMap[record.employeeId] || 'Unknown Employee';
+                record.name = employeeMap[record.email] || 'Unknown Employee';
               });
             }
           } catch (error) {
@@ -389,11 +389,11 @@ export default function Home() {
   // Check attendance compliance when records change
   useEffect(() => {
     if (userName && records.length > 0) {
-      const userRecords = records.filter(record => record.employeeId === user?.employeeId);
+      const userRecords = records.filter(record => record.email === user?.email);
       const warnings = checkAttendanceCompliance(userRecords, userName);
       setComplianceWarnings(warnings);
     }
-  }, [records, userName, user?.employeeId]);
+  }, [records, userName, user?.email]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -422,11 +422,11 @@ export default function Home() {
     try {
       console.log('Clocking in with user:', user);
       console.log('User ID (UUID):', user.id);
-      console.log('Employee ID (text):', user.employeeId);
+      console.log('User Email:', user.email);
       console.log('User Name:', userName.trim());
 
       const attendanceData = {
-        employee_id: user.employeeId,  // Use employeeId (text) not id (UUID)
+        email: user.email,
         login_time: new Date().toISOString(),
         logout_time: null
       };
@@ -451,7 +451,7 @@ export default function Home() {
         const newRecord: AttendanceRecord = {
           id: data.id,
           name: userName, // Use current user's name
-          employeeId: user.employeeId, // Add employeeId field
+          email: user.email,
           loginTime: new Date(data.login_time),
           logoutTime: null
         };
@@ -523,8 +523,8 @@ export default function Home() {
         let query = supabase.schema('attendance').from('attendance_logs').delete();
 
         // If not admin, only delete own records
-        if (user?.role !== 'admin' && user?.employeeId) {
-          query = query.eq('employee_id', user.employeeId);  // Use employeeId not id
+        if (user?.role !== 'admin' && user?.email) {
+          query = query.eq('email', user.email);
         } else {
           // For admin, delete all records
           query = query.neq('id', '00000000-0000-0000-0000-000000000000');
@@ -547,7 +547,7 @@ export default function Home() {
   };
 
   // Filter records for current user only
-  const userRecords = records.filter(record => record.employeeId === user?.employeeId);
+  const userRecords = records.filter(record => record.email === user?.email);
 
   // Show all records sorted by latest first
   const displayRecords: AttendanceRecord[] = [...records].sort((a, b) => b.loginTime.getTime() - a.loginTime.getTime());

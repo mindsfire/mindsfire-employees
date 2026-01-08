@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '../contexts/AuthContext';
 import Image from 'next/image';
+import { createClient } from '../utils/supabase/client';
 
 type LoginFormValues = {
-  employeeId: string;
+  email: string;
   password: string;
   rememberMe: boolean;
 };
@@ -17,7 +17,7 @@ export default function Login() {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutUntil, setLockoutUntil] = useState<Date | null>(null);
   const router = useRouter();
-  const { login } = useAuth();
+  const supabase = createClient();
   const lockoutDurationMs = 30 * 1000; // 30 seconds temporary lock
 
   const {
@@ -29,7 +29,7 @@ export default function Login() {
     watch
   } = useForm<LoginFormValues>({
     defaultValues: {
-      employeeId: '',
+      email: '',
       password: '',
       rememberMe: false
     }
@@ -41,9 +41,9 @@ export default function Login() {
   }, [lockoutUntil]);
 
   useEffect(() => {
-    const savedId = localStorage.getItem('rememberedEmployeeId');
-    if (savedId) {
-      setValue('employeeId', savedId);
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    if (savedEmail) {
+      setValue('email', savedEmail);
       setValue('rememberMe', true);
     }
   }, [setValue]);
@@ -68,13 +68,17 @@ export default function Login() {
     try {
       setAuthError('');
       setIsLoading(true);
-      const { success, error: loginError } = await login(values.employeeId, values.password);
 
-      if (success) {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
+
+      if (!error) {
         if (values.rememberMe) {
-          localStorage.setItem('rememberedEmployeeId', values.employeeId);
+          localStorage.setItem('rememberedEmail', values.email);
         } else {
-          localStorage.removeItem('rememberedEmployeeId');
+          localStorage.removeItem('rememberedEmail');
         }
         setFailedAttempts(0);
         setLockoutUntil(null);
@@ -85,12 +89,12 @@ export default function Login() {
         if (nextAttempts >= 5) {
           setLockoutUntil(new Date(Date.now() + lockoutDurationMs));
           setAuthError('Account temporarily locked due to multiple failed attempts. Please wait 30 seconds.');
-        } else if (loginError) {
-          setAuthError(loginError);
         } else {
-          setAuthError('Invalid credentials. Please try again.');
+          console.log(error);
+          setAuthError(error.message || 'Invalid credentials. Please try again.');
         }
-        reset({ employeeId: values.employeeId, password: '', rememberMe: values.rememberMe });
+        // Don't reset email, just password
+        setValue('password', '');
       }
     } catch (err) {
       setAuthError('An unexpected error occurred. Please try again.');
@@ -105,7 +109,7 @@ export default function Login() {
     return Math.ceil((lockoutUntil.getTime() - Date.now()) / 1000);
   }, [isLockedOut, lockoutUntil]);
 
-  const employeeIdValue = watch('employeeId');
+  const emailValue = watch('email');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
@@ -189,41 +193,37 @@ export default function Login() {
               )
             }
 
-            
+
             {/* Login Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div>
-                <label htmlFor="employeeId" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Employee ID
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email ID
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
                     </svg>
                   </div>
                   <input
-                    {...register('employeeId', {
-                      required: 'Employee ID is required',
-                      maxLength: {
-                        value: 20,
-                        message: 'Maximum 20 characters'
+                    {...register('email', {
+                      required: 'Email is required',
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: "Invalid email address"
                       }
                     })}
-                    id="employeeId"
-                    type="text"
-                    autoComplete="username"
+                    id="email"
+                    type="email"
+                    autoComplete="email"
                     disabled={isLoading || isLockedOut}
                     className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white/80 backdrop-blur-sm transition-all"
-                    placeholder="Enter your employee ID"
+                    placeholder="Enter your email"
                   />
                 </div>
-                {errors.employeeId ? (
-                  <p className="mt-2 text-sm text-red-600">{errors.employeeId.message}</p>
-                ) : (
-                  <p className="mt-2 text-sm text-gray-500">
-                    Demo: admin, 1001, or 1002
-                  </p>
+                {errors.email && (
+                  <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>
                 )}
               </div>
 
@@ -328,7 +328,7 @@ export default function Login() {
                   <div className="mt-2 text-sm text-blue-700">
                     <ul className="list-disc pl-5 space-y-1">
                       <li>System auto-signs you out after 30 minutes of inactivity.</li>
-                      <li>Never share your Employee ID or password.</li>
+                      <li>Never share your credentials.</li>
                       <li>Contact admin if you suspect unauthorized access.</li>
                     </ul>
                   </div>
@@ -341,9 +341,9 @@ export default function Login() {
               <p className="text-sm text-gray-500">
                 Attempts remaining before lockout: {Math.max(0, 5 - failedAttempts)}
               </p>
-              {employeeIdValue && (
+              {emailValue && (
                 <p className="mt-2 text-sm text-gray-600">
-                  Signing in as <strong>{employeeIdValue}</strong>
+                  Signing in as <strong>{emailValue}</strong>
                 </p>
               )}
             </div>
