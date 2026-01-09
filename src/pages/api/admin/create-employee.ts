@@ -38,7 +38,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             user_metadata: { full_name: fullName }
         })
 
-        if (authError) throw authError
+        if (authError) {
+            // Handle specific error cases
+            if (authError.message.includes('User already registered')) {
+                return res.status(400).json({ message: 'A user with this email address has already been registered' })
+            }
+            throw authError
+        }
 
         // 2. Insert into the attendance.employees table
         // We use the email as the link.

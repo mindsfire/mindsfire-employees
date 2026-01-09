@@ -1,6 +1,8 @@
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import Image from 'next/image';
+import { useState, Fragment } from 'react';
+import PasswordChangeDialog from './PasswordChangeDialog';
 
 interface NavbarProps {
     onMenuClick: () => void;
@@ -8,8 +10,9 @@ interface NavbarProps {
 }
 
 export default function Navbar({ onMenuClick, onLogoClick }: NavbarProps) {
-    const { user, logout } = useAuth();
+    const { user, logout, changePassword } = useAuth();
     const router = useRouter();
+    const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
     const handleLogoClick = () => {
         console.log('Navbar logo clicked');
@@ -18,6 +21,14 @@ export default function Navbar({ onMenuClick, onLogoClick }: NavbarProps) {
         } else {
             console.log('No onLogoClick handler provided');
         }
+    };
+
+    const handlePasswordChange = async (currentPassword: string, newPassword: string) => {
+        const result = await changePassword(currentPassword, newPassword);
+        if (result.success) {
+            setIsPasswordDialogOpen(false);
+        }
+        return result;
     };
 
     // Get user initials for avatar
@@ -31,6 +42,7 @@ export default function Navbar({ onMenuClick, onLogoClick }: NavbarProps) {
     };
 
     return (
+        <>
         <nav className="text-gray-800 shadow-lg fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: '#f0f8ff' }}>
             <div className="px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
@@ -100,14 +112,28 @@ export default function Navbar({ onMenuClick, onLogoClick }: NavbarProps) {
                             </div>
                             <button
                                 onClick={() => router.push('/logout')}
-                                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 mr-2"
                             >
                                 Sign Out
+                            </button>
+                            <button
+                                onClick={() => setIsPasswordDialogOpen(true)}
+                                className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-400"
+                            >
+                                Change Password
                             </button>
                         </div>
                     )}
                 </div>
             </div>
         </nav>
+
+        {/* Password Change Dialog */}
+        <PasswordChangeDialog
+            isOpen={isPasswordDialogOpen}
+            onClose={() => setIsPasswordDialogOpen(false)}
+            onSubmit={handlePasswordChange}
+        />
+        </>
     );
 }
