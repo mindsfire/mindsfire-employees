@@ -1,4 +1,5 @@
 import { AttendanceRecord } from '../pages/index';
+import { startOfDay, daysAgo, startOfMonth } from '../utils/dateUtils';
 
 interface StatsCardsProps {
   records: AttendanceRecord[];
@@ -11,19 +12,15 @@ export default function StatsCards({ records, currentSessionId, userName }: Stat
   const userRecords = records.filter(record => record.name === userName);
 
   // Today's stats
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = startOfDay();
   // todayRecords filtered but not currently used in summary
 
   // This week stats (last 7 days)
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekAgo = daysAgo(7);
   const weekRecords = userRecords.filter(record => record.loginTime >= weekAgo);
 
   // This month stats
-  const thisMonth = new Date();
-  thisMonth.setDate(1);
-  thisMonth.setHours(0, 0, 0, 0);
+  const thisMonth = startOfMonth();
   const monthRecords = userRecords.filter(record => record.loginTime >= thisMonth);
 
   // Calculate total hours

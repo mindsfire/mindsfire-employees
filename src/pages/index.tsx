@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import StatsCards from '../components/StatsCards';
 import { supabase } from '../lib/supabaseClient';
+import { startOfDay, endOfDay, daysAgo } from '../utils/dateUtils';
 
 export type AttendanceRecord = {
   id: string;
@@ -116,11 +117,8 @@ type ComplianceWarning = {
 };
 
 const checkAttendanceCompliance = (userRecords: AttendanceRecord[], userName: string): ComplianceWarning[] => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const today = startOfDay();
+  const sevenDaysAgo = daysAgo(7, today);
 
   // Collect all issues
   const issues: string[] = [];
@@ -128,8 +126,7 @@ const checkAttendanceCompliance = (userRecords: AttendanceRecord[], userName: st
   // Check for unclosed sessions from previous days
   const unclosedOldSessions = userRecords.filter(record => {
     if (record.logoutTime) return false;
-    const recordDate = new Date(record.loginTime);
-    recordDate.setHours(0, 0, 0, 0);
+    const recordDate = startOfDay(record.loginTime);
     return recordDate < today;
   });
 
@@ -299,20 +296,17 @@ export default function Home() {
         }
 
         // Auto-close unclosed sessions from previous days
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = startOfDay();
 
         let hasAutoClosedSessions = false;
         const autoClosedRecords = formattedRecords.map((record: AttendanceRecord) => {
           // If session is unclosed and from a previous day
           if (!record.logoutTime) {
-            const loginDate = new Date(record.loginTime);
-            loginDate.setHours(0, 0, 0, 0);
+            const loginDate = startOfDay(record.loginTime);
 
             if (loginDate < today) {
               // Auto-close at 11:59:59 PM of the login day
-              const autoLogoutTime = new Date(record.loginTime);
-              autoLogoutTime.setHours(23, 59, 59, 999);
+              const autoLogoutTime = endOfDay(record.loginTime);
               hasAutoClosedSessions = true;
               return { ...record, logoutTime: autoLogoutTime };
             }
@@ -321,8 +315,7 @@ export default function Home() {
         });
 
         // Check for active session (only from today and not auto-closed)
-        const currentToday = new Date();
-        currentToday.setHours(0, 0, 0, 0);
+        const currentToday = startOfDay();
 
         console.log('All records after auto-close:', autoClosedRecords.map(r => ({
           id: r.id,
@@ -333,8 +326,7 @@ export default function Home() {
 
         const activeSession = autoClosedRecords.find((r: AttendanceRecord) => {
           if (!r.logoutTime) {
-            const recordDate = new Date(r.loginTime);
-            recordDate.setHours(0, 0, 0, 0);
+            const recordDate = startOfDay(r.loginTime);
             const isToday = recordDate.getTime() === currentToday.getTime();
 
             console.log('Found unclosed session:', {
@@ -359,8 +351,7 @@ export default function Home() {
         }
 
         // Apply Retention Policy
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+        const cutoffDate = daysAgo(RETENTION_DAYS);
 
         const validRecords = autoClosedRecords.filter((record: AttendanceRecord) => {
           return record.loginTime > cutoffDate;
