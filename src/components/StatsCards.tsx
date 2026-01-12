@@ -12,7 +12,7 @@ export default function StatsCards({ records, currentSessionId, userName }: Stat
   const userRecords = records.filter(record => record.name === userName);
 
   // Today's stats
-  const today = startOfDay();
+  // const today = startOfDay();
   // todayRecords filtered but not currently used in summary
 
   // This week stats (last 7 days)

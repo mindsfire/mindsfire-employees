@@ -374,7 +374,7 @@ export default function Home() {
     };
 
     loadRecords();
-  }, [user]);
+  }, [user, userName]);
 
   // Check attendance compliance when records change
   useEffect(() => {
@@ -408,54 +408,76 @@ export default function Home() {
       return;
     }
 
-    // Always create a new record when clocking in, even for same day
+    // First-In, Last-Out logic: Check if a record already exists for today
     try {
-      console.log('Clocking in with user:', user);
-      console.log('User ID (UUID):', user.id);
-      console.log('User Email:', user.email);
-      console.log('User Name:', userName.trim());
+      const todayStart = startOfDay();
+      const tomorrowStart = daysAgo(-1, todayStart);
 
-      const attendanceData = {
-        email: user.email,
-        login_time: new Date().toISOString(),
-        logout_time: null
-      };
-
-      console.log('Attendance data to insert:', attendanceData);
-
-      const { data, error } = await supabase
+      const { data: existingRecords, error: fetchError } = await supabase
         .schema('attendance')
         .from('attendance_logs')
-        .insert([attendanceData])
-        .select()
-        .single();
+        .select('*')
+        .eq('email', user.email)
+        .gte('login_time', todayStart.toISOString())
+        .lt('login_time', tomorrowStart.toISOString())
+        .order('login_time', { ascending: true });
 
-      console.log('Supabase response:', { data, error });
+      if (fetchError) throw fetchError;
 
-      if (error) {
-        console.error('Supabase error details:', error);
-        throw error;
+      let resultData;
+      if (existingRecords && existingRecords.length > 0) {
+        // Reuse the first record of the day - clear logout time to "resume"
+        const { data, error: updateError } = await supabase
+          .schema('attendance')
+          .from('attendance_logs')
+          .update({ logout_time: null })
+          .eq('id', existingRecords[0].id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+        resultData = data;
+        console.log('Resumed existing daily session:', resultData.id);
+      } else {
+        // Create a fresh record for the day
+        const { data, error: insertError } = await supabase
+          .schema('attendance')
+          .from('attendance_logs')
+          .insert([{
+            email: user.email,
+            login_time: new Date().toISOString(),
+            logout_time: null
+          }])
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        resultData = data;
+        console.log('Created new daily session:', resultData.id);
       }
 
-      if (data) {
-        const newRecord: AttendanceRecord = {
-          id: data.id,
-          name: userName, // Use current user's name
+      if (resultData) {
+        const updatedRecord: AttendanceRecord = {
+          id: resultData.id,
+          name: userName,
           email: user.email,
-          loginTime: new Date(data.login_time),
-          logoutTime: null
+          loginTime: new Date(resultData.login_time),
+          logoutTime: resultData.logout_time ? new Date(resultData.logout_time) : null
         };
 
         setRecords(prevRecords => {
-          // Add new record and sort by login_time descending
-          const updatedRecords = [newRecord, ...prevRecords];
-          return updatedRecords.sort((a, b) => b.loginTime.getTime() - a.loginTime.getTime());
+          // Remove if already in list (for reuse case) and add back updated
+          const filtered = prevRecords.filter(r => r.id !== updatedRecord.id);
+          const updated = [updatedRecord, ...filtered];
+          return updated.sort((a, b) => b.loginTime.getTime() - a.loginTime.getTime());
         });
-        setCurrentSessionId(newRecord.id);
+        setCurrentSessionId(updatedRecord.id);
       }
     } catch (error) {
-      console.error('Error during clock in:', error);
-      setError('Failed to clock in. Please try again.');
+      console.error('Clock-in error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to clock in. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
