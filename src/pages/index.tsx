@@ -592,7 +592,7 @@ export default function Home() {
 
 
   return (
-    <div>
+    <>
       {/* Error Display */}
       {error && (
         <div style={{
@@ -725,6 +725,7 @@ export default function Home() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
+
 }

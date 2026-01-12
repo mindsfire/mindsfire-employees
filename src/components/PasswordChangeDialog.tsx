@@ -1,18 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface PasswordChangeDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  forceChange?: boolean;
 }
 
-export default function PasswordChangeDialog({ isOpen, onClose, onSubmit }: PasswordChangeDialogProps) {
+export default function PasswordChangeDialog({ isOpen, onClose, onSubmit, forceChange = false }: PasswordChangeDialogProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Local state to "lock in" the forceChange status when the dialog opens.
+  // This prevents the "Cancel" and "X" buttons from appearing if forceChange 
+  // flips to false in the background after a successful password update.
+  const [isForcedMode, setIsForcedMode] = useState(forceChange);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsForcedMode(forceChange);
+    }
+  }, [isOpen, forceChange]);
 
   const validateForm = () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -64,7 +76,7 @@ export default function PasswordChangeDialog({ isOpen, onClose, onSubmit }: Pass
   };
 
   const handleClose = () => {
-    if (!isLoading) {
+    if (!isLoading && !isForcedMode) {
       setError('');
       setSuccess('');
       setCurrentPassword('');
@@ -77,19 +89,26 @@ export default function PasswordChangeDialog({ isOpen, onClose, onSubmit }: Pass
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+    <div
+      className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isForcedMode) handleClose();
+      }}
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Change Password</h2>
-          <button
-            onClick={handleClose}
-            disabled={isLoading}
-            className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
+          {!isForcedMode && (
+            <button
+              onClick={handleClose}
+              disabled={isLoading}
+              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          )}
         </div>
 
         {error && (
@@ -151,18 +170,20 @@ export default function PasswordChangeDialog({ isOpen, onClose, onSubmit }: Pass
           </div>
 
           <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={isLoading}
-              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50 transition-colors"
-            >
-              Cancel
-            </button>
+            {!isForcedMode && (
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isLoading}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+            )}
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50 transition-colors"
+              className={`px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50 transition-colors ${isForcedMode ? 'w-full' : 'flex-1'}`}
             >
               {isLoading ? 'Changing...' : 'Change Password'}
             </button>

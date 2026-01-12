@@ -6,7 +6,6 @@ import {
   removeCustomAccounts,
   useAuth
 } from '../contexts/AuthContext';
-import Layout from '../components/Layout';
 
 type EmployeeFormState = {
   id: string;
@@ -232,7 +231,7 @@ export default function AdminDashboard() {
   if (!user || user.role !== 'admin') return <div>Access denied.</div>;
 
   return (
-    <Layout onLogoClick={handleLogoClick}>
+    <>
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -380,6 +379,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 }

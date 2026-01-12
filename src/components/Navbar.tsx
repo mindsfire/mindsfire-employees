@@ -136,8 +136,13 @@ export default function Navbar({ onMenuClick, onLogoClick }: NavbarProps) {
             {/* Password Change Dialog */}
             <PasswordChangeDialog
                 isOpen={isPasswordDialogOpen}
-                onClose={() => setIsPasswordDialogOpen(false)}
+                onClose={() => {
+                    if (!requiresPasswordChange) {
+                        setIsPasswordDialogOpen(false);
+                    }
+                }}
                 onSubmit={handlePasswordChange}
+                forceChange={requiresPasswordChange}
             />
         </>
     );
