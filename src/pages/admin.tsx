@@ -6,6 +6,7 @@ import {
   removeCustomAccounts,
   useAuth
 } from '../contexts/AuthContext';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 type EmployeeFormState = {
   id: string;
@@ -54,7 +55,9 @@ export default function AdminDashboard() {
   const [employees, setEmployees] = useState<MockAccount[]>([]);
   const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
   const [statusMessage, setStatusMessage] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // This is the Form Modal (Add/Edit)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [formState, setFormState] = useState<EmployeeFormState>(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -159,13 +162,17 @@ export default function AdminDashboard() {
     });
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!formState.firstName.trim() || !formState.email.trim()) {
       setStatusMessage('First Name and Email are required.');
       return;
     }
+    // Open the confirmation modal instead of submitting directly
+    setIsSaveModalOpen(true);
+  };
 
+  const confirmSave = async () => {
     setIsSubmitting(true);
     setStatusMessage('Saving...');
     const fullName = `${formState.firstName.trim()} ${formState.lastName.trim()}`.trim();
@@ -198,32 +205,34 @@ export default function AdminDashboard() {
 
       await loadEmployees();
       setStatusMessage(`Successfully saved ${fullName}.`);
-      closeModal();
+      setIsSaveModalOpen(false); // Close confirmation modal
+      closeModal(); // Close form modal
     } catch (error: unknown) {
       console.error('Error saving:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setStatusMessage(`Failed: ${errorMessage}`);
+      setIsSaveModalOpen(false); // Close confirmation on error so they can try again or fix
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (selectedEmails.length === 0) return;
+    setIsDeleteModalOpen(true);
+  };
 
-    const employeesToDelete = employees.filter(emp => emp.email && selectedEmails.includes(emp.email));
-    const employeeNames = employeesToDelete.map(emp => emp.name).join(', ');
-
-    if (window.confirm(`Delete these employees?\n\n${employeeNames}`)) {
-      try {
-        await removeCustomAccounts(selectedEmails);
-        setSelectedEmails([]);
-        await loadEmployees();
-        setStatusMessage(`Removed ${selectedEmails.length} employees.`);
-      } catch (error) {
-        console.error('Delete error:', error);
-        setStatusMessage('Failed to delete.');
-      }
+  const confirmDelete = async () => {
+    try {
+      await removeCustomAccounts(selectedEmails);
+      setSelectedEmails([]);
+      await loadEmployees();
+      setStatusMessage(`Removed ${selectedEmails.length} employees.`);
+    } catch (error) {
+      console.error('Delete error:', error);
+      setStatusMessage('Failed to delete.');
+    } finally {
+      setIsDeleteModalOpen(false);
     }
   };
 
@@ -371,7 +380,7 @@ export default function AdminDashboard() {
 
               <div className="flex justify-end space-x-3">
                 <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50">
-                  {isSubmitting ? 'Saving...' : 'Save'}
+                  {isSubmitting ? 'Save' : 'Save'}
                 </button>
                 <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
               </div>
@@ -379,6 +388,29 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modals */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        title="Delete Employees"
+        message={`Are you sure you want to delete ${selectedEmails.length} selected employee(s)?\nThis action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDangerous={true}
+        onConfirm={confirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
+
+      <ConfirmationModal
+        isOpen={isSaveModalOpen}
+        title="Save Employee"
+        message={`Are you sure you want to save the details for ${formState.firstName} ${formState.lastName}?`}
+        confirmText="Save"
+        cancelText="Edit"
+        isDangerous={false}
+        onConfirm={confirmSave}
+        onCancel={() => setIsSaveModalOpen(false)}
+      />
     </>
   );
 }
