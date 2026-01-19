@@ -1,4 +1,4 @@
-# Local Employee Attendance Logger
+# Mindsfire Employees
 
 A Next.js application for tracking employee attendance with local storage and Supabase integration.
 
@@ -14,7 +14,7 @@ Before running this project, ensure you have the following installed:
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd local-employee-attendance-logger
+cd mindsfire-employees
 ```
 
 2. Install dependencies:
@@ -93,7 +93,7 @@ To run the CI pipeline successfully, configure these repository secrets:
 #### Step 1: Clone and Install
 ```bash
 git clone <repository-url>
-cd local-employee-attendance-logger
+cd mindsfire-employees
 npm install
 ```
 
