@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Controller, useForm } from 'react-hook-form';
 import Image from 'next/image';
-import { Eye, EyeOff, GalleryVerticalEnd, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { createClient } from '../utils/supabase/client';
 
 import { cn } from '@/lib/utils';
@@ -132,15 +132,19 @@ export default function Login() {
                 href="#"
                 className="flex flex-col items-center gap-2 font-medium"
               >
-                <div className="flex size-8 items-center justify-center rounded-md">
-                  <GalleryVerticalEnd className="size-6" />
+                <div className="flex items-center justify-center rounded-md -mt-8">
+                  <Image
+                    src="/logo-only.svg"
+                    alt="Mindsfire"
+                    width={45}
+                    height={45}
+                    className="object-contain"
+                    priority
+                  />
                 </div>
                 <span className="sr-only">Mindsfire</span>
               </a>
-              <h1 className="text-xl font-bold">Welcome to Mindsfire</h1>
-              <FieldDescription>
-                Don&apos;t have an account? <a href="#">Contact admin</a>
-              </FieldDescription>
+              <h1 className="text-xl font-bold">Welcome to Mindsfire Employees</h1>
             </div>
 
             {/* Error Messages */}
@@ -244,11 +248,6 @@ export default function Login() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Login'}
               </Button>
-              {emailValue && (
-                <FieldDescription>
-                  Signing in as <strong>{emailValue}</strong>
-                </FieldDescription>
-              )}
             </Field>
 
             <FieldSeparator>Or</FieldSeparator>
@@ -267,9 +266,8 @@ export default function Login() {
           </FieldGroup>
         </form>
 
-        <FieldDescription className="px-6 text-center">
-          By clicking continue, you agree to our <a href="#">Terms of Service</a>{' '}
-          and <a href="#">Privacy Policy</a>.
+        <FieldDescription className="px-6 text-center text-xs text-muted-foreground">
+          © 2026 Mindsfire Pvt Ltd, All Rights Reserved.
         </FieldDescription>
       </div>
     </div>
