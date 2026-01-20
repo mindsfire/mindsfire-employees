@@ -1,6 +1,12 @@
-import { useState, ReactNode } from 'react';
-import Navbar from './Navbar';
-import Sidebar from './Sidebar';
+import { ReactNode, useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+
+import { useAuth } from '../contexts/AuthContext';
+import PasswordChangeDialog from './PasswordChangeDialog';
+
+import { AppSidebar } from '@/components/app-sidebar';
+import { SiteHeader } from '@/components/site-header';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
 interface LayoutProps {
     children: ReactNode;
@@ -8,30 +14,67 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, onLogoClick }: LayoutProps) {
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const router = useRouter();
+    const { user, changePassword, requiresPasswordChange } = useAuth();
+    const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
-    const toggleSidebar = () => {
-        setSidebarOpen(!sidebarOpen);
+    useEffect(() => {
+        if (requiresPasswordChange && user) {
+            setIsPasswordDialogOpen(true);
+        }
+    }, [requiresPasswordChange, user]);
+
+    const handlePasswordChange = async (currentPassword: string, newPassword: string) => {
+        const result = await changePassword(currentPassword, newPassword);
+        if (result.success) {
+            setIsPasswordDialogOpen(false);
+        }
+        return result;
     };
 
-    const closeSidebar = () => {
-        setSidebarOpen(false);
+    const handleLogout = () => {
+        router.push('/logout');
+    };
+
+    const handleLogoClick = () => {
+        if (onLogoClick) {
+            onLogoClick();
+            return;
+        }
+        router.push('/');
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Navbar */}
-            <Navbar onMenuClick={toggleSidebar} onLogoClick={onLogoClick} />
-
-            {/* Sidebar */}
-            <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-
-            {/* Main Content */}
-            <main className={`pt-16 transition-all duration-300 ${sidebarOpen ? 'lg:pl-64' : ''}`}>
-                <div className="p-4 sm:p-6 lg:p-8">
-                    {children}
+        <SidebarProvider>
+            <AppSidebar
+                variant="inset"
+                onLogout={handleLogout}
+                onChangePassword={() => setIsPasswordDialogOpen(true)}
+                onLogoClick={handleLogoClick}
+            />
+            <SidebarInset>
+                <SiteHeader
+                    title="Mindsfire Employees"
+                    user={user ? { name: user.name, email: user.email } : null}
+                    onLogout={handleLogout}
+                    onChangePassword={() => setIsPasswordDialogOpen(true)}
+                    onLogoClick={handleLogoClick}
+                />
+                <div className="flex flex-1 flex-col">
+                    <div className="p-4 sm:p-6 lg:p-8">{children}</div>
                 </div>
-            </main>
-        </div>
+            </SidebarInset>
+
+            <PasswordChangeDialog
+                isOpen={isPasswordDialogOpen}
+                onClose={() => {
+                    if (!requiresPasswordChange) {
+                        setIsPasswordDialogOpen(false);
+                    }
+                }}
+                onSubmit={handlePasswordChange}
+                forceChange={requiresPasswordChange}
+            />
+        </SidebarProvider>
     );
 }
