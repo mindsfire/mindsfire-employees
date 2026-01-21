@@ -35,7 +35,6 @@ import {
 } from "@tanstack/react-table"
 import {
   CheckCircle2Icon,
-  CheckCircleIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -366,6 +365,7 @@ export function DataTable({
     [data]
   )
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

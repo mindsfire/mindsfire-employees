@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { useRouter } from 'next/router';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -17,12 +17,7 @@ export default function Layout({ children, onLogoClick }: LayoutProps) {
     const router = useRouter();
     const { user, changePassword, requiresPasswordChange } = useAuth();
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
-
-    useEffect(() => {
-        if (requiresPasswordChange && user) {
-            setIsPasswordDialogOpen(true);
-        }
-    }, [requiresPasswordChange, user]);
+    const isDialogOpen = requiresPasswordChange || isPasswordDialogOpen;
 
     const handlePasswordChange = async (currentPassword: string, newPassword: string) => {
         const result = await changePassword(currentPassword, newPassword);
@@ -76,7 +71,7 @@ export default function Layout({ children, onLogoClick }: LayoutProps) {
             </SidebarInset>
 
             <PasswordChangeDialog
-                isOpen={isPasswordDialogOpen}
+                isOpen={isDialogOpen}
                 onClose={() => {
                     if (!requiresPasswordChange) {
                         setIsPasswordDialogOpen(false);

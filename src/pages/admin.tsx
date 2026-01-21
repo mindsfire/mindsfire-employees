@@ -78,14 +78,6 @@ export default function AdminDashboard() {
   const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
-  const handleLogoClick = () => {
-    setIsModalOpen(false);
-    setFormState(initialFormState);
-    setSelectedEmails([]);
-    setStatusMessage('');
-    router.push('/');
-  };
-
   const loadEmployees = useCallback(async () => {
     try {
       const accounts = await getAllAccounts();

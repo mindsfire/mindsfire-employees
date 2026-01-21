@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import { TrendingDownIcon, TrendingUpIcon } from "lucide-react"
 
 import { daysAgo, startOfMonth } from "@/utils/dateUtils"
@@ -29,6 +30,7 @@ export function SectionCards({
   currentSessionId,
   userName,
 }: SectionCardsProps) {
+  const [now, setNow] = useState(0)
   const userRecords = records.filter((record) => record.name === userName)
   const weekAgo = daysAgo(7)
   const weekRecords = userRecords.filter((record) => record.loginTime >= weekAgo)
@@ -67,11 +69,29 @@ export function SectionCards({
     return items.filter((record) => record.loginTime.getHours() > 10).length
   }
 
+  useEffect(() => {
+    if (!currentSessionId) {
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      setNow(Date.now())
+    }, 0)
+    const interval = setInterval(() => {
+      setNow(Date.now())
+    }, 60000)
+
+    return () => {
+      clearTimeout(timeout)
+      clearInterval(interval)
+    }
+  }, [currentSessionId])
+
   const currentSessionDuration = currentSessionId
     ? (() => {
         const session = userRecords.find((record) => record.id === currentSessionId)
-        if (session) {
-          const diff = Date.now() - session.loginTime.getTime()
+        if (session && now > 0) {
+          const diff = now - session.loginTime.getTime()
           return formatHours(diff)
         }
         return "0h 0m"
