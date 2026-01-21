@@ -1,5 +1,5 @@
 import { AttendanceRecord } from '../pages/index';
-import { startOfDay, daysAgo, startOfMonth } from '../utils/dateUtils';
+import { daysAgo, startOfMonth } from '../utils/dateUtils';
 
 interface StatsCardsProps {
   records: AttendanceRecord[];

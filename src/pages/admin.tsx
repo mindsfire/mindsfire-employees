@@ -1,5 +1,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import { supabase } from '../lib/supabaseClient';
+import { generateAttendanceAlerts, AttendanceAlert, AttendanceRecord } from '../utils/attendanceAlerts';
+import { startOfDay, endOfDay } from '../utils/dateUtils';
 import {
   MockAccount,
   getAllAccounts,
@@ -7,6 +10,14 @@ import {
   useAuth
 } from '../contexts/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
+
+interface AttendanceLogJoin {
+  id: string;
+  email: string;
+  login_time: string;
+  logout_time: string | null;
+  employees: { full_name: string } | null;
+}
 
 type EmployeeFormState = {
   id: string;
@@ -57,11 +68,15 @@ export default function AdminDashboard() {
   const [statusMessage, setStatusMessage] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false); // This is the Form Modal (Add/Edit)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  // Removed isSaveModalOpen
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [successModalMessage, setSuccessModalMessage] = useState('');
   const [formState, setFormState] = useState<EmployeeFormState>(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Alert System State
+  const [alerts, setAlerts] = useState<AttendanceAlert[]>([]);
+  const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   const handleLogoClick = () => {
     setIsModalOpen(false);
@@ -81,6 +96,49 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const loadAttendanceAlerts = useCallback(async () => {
+    setIsLoadingAlerts(true);
+    try {
+      const today = startOfDay();
+      const tomorrow = endOfDay(new Date()); // Get end of current day to cover full range
+
+      // 1. Fetch today's logs
+      const { data: logs, error } = await supabase
+        .schema('attendance')
+        .from('attendance_logs')
+        .select(`
+          id,
+          email,
+          login_time,
+          logout_time,
+          employees ( full_name )
+        `)
+        .gte('login_time', today.toISOString())
+        .lte('login_time', tomorrow.toISOString());
+
+      if (error) throw error;
+
+      if (logs) {
+        // 2. Map to AttendanceRecord format
+        const records: AttendanceRecord[] = (logs as unknown as AttendanceLogJoin[]).map((log) => ({
+          id: log.id,
+          name: log.employees?.full_name || log.email,
+          email: log.email,
+          loginTime: new Date(log.login_time),
+          logoutTime: log.logout_time ? new Date(log.logout_time) : null
+        }));
+
+        // 3. Generate alerts
+        const generatedAlerts = generateAttendanceAlerts(records);
+        setAlerts(generatedAlerts);
+      }
+    } catch (error) {
+      console.error('Error loading alerts:', error);
+    } finally {
+      setIsLoadingAlerts(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
@@ -88,8 +146,9 @@ export default function AdminDashboard() {
       router.push('/');
     } else if (!loading && user?.role === 'admin') {
       loadEmployees();
+      loadAttendanceAlerts();
     }
-  }, [user, loading, router, loadEmployees]);
+  }, [user, loading, router, loadEmployees, loadAttendanceAlerts]);
 
   const allVisibleSelected = useMemo(
     () => employees.length > 0 && selectedEmails.length === employees.length,
@@ -248,10 +307,67 @@ export default function AdminDashboard() {
               <h2 className="text-2xl font-bold text-gray-900">Employee Management</h2>
               <p className="text-sm text-gray-600 mt-1">Manage system users by Email</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-center">
+            <div className="flex items-center space-x-6">
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsAlertOpen(!isAlertOpen)}
+                  className="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none"
+                >
+                  <span className="sr-only">View notifications</span>
+                  {/* Bell Icon */}
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {/* Red Badge */}
+                  {alerts.length > 0 && (
+                    <span className="absolute top-0 right-0 block h-5 w-5 rounded-full bg-red-500 ring-2 ring-white text-xs font-bold text-white flex items-center justify-center">
+                      {alerts.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Dropdown Panel */}
+                {isAlertOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5 max-h-96 overflow-y-auto">
+                    {isLoadingAlerts ? (
+                      <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                        <span className="inline-block animate-pulse">Checking for alerts...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
+                          <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                        </div>
+                        {alerts.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-500 text-center">No new alerts</div>
+                        ) : (
+                          alerts.map((alert) => (
+                            <div key={alert.id} className="px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                              <div className="flex items-start">
+                                <div className="flex-shrink-0 pt-0.5">
+                                  {alert.type === 'LATE_ARRIVAL' && <span className="text-yellow-600">⚠️</span>}
+                                  {alert.type === 'EARLY_DEPARTURE' && <span className="text-orange-600">🏃</span>}
+                                  {alert.type === 'UNDERTIME' && <span className="text-red-600">📉</span>}
+                                </div>
+                                <div className="ml-3 w-0 flex-1">
+                                  <p className="text-sm font-medium text-gray-900">{alert.employeeName}</p>
+                                  <p className="text-xs text-gray-500 mt-0.5">{alert.message.replace(`${alert.employeeName} `, '').replace(alert.employeeName, '')}</p>
+                                  <p className="text-xs text-gray-400 mt-1">{alert.date === new Date().toISOString().split('T')[0] ? 'Today' : alert.date}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="text-center border-l pl-6 border-gray-200">
                 <div className="text-2xl font-bold text-blue-600">{employees.length}</div>
-                <div className="text-xs text-gray-500">Total</div>
+                <div className="text-xs text-gray-500">Total Users</div>
               </div>
             </div>
           </div>
@@ -265,6 +381,8 @@ export default function AdminDashboard() {
               <p className="text-sm">{statusMessage}</p>
             </div>
           )}
+
+
 
           <div className="flex justify-between items-center p-4 border-b border-gray-200">
             <button onClick={openCreateModal} className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700">

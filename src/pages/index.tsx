@@ -217,7 +217,7 @@ const WarningBanner = ({ warnings, onDismiss }: { warnings: ComplianceWarning[],
 
 export default function Home() {
   const router = useRouter();
-  const { user, loading, logout } = useAuth();
+  const { user, loading } = useAuth();
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);

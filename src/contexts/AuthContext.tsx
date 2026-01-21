@@ -42,7 +42,7 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'authUser';
+
 export const CUSTOM_ACCOUNTS_STORAGE_KEY = 'customEmployeeAccounts';
 
 // Initialize Supabase client
