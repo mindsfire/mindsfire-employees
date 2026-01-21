@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import StatsCards from '../components/StatsCards';
+import { SectionCards } from '@/components/section-cards';
 import { AttendanceDataTable } from '@/components/attendance-data-table';
 import {
   Select,
@@ -774,7 +774,7 @@ export default function Home() {
       </div>
 
       {/* Stats Cards */}
-      <StatsCards
+      <SectionCards
         records={records}
         currentSessionId={currentSessionId}
         userName={userName}
@@ -800,7 +800,7 @@ export default function Home() {
               </Select>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700">
+                  <button className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
                     <FileDown className="h-4 w-4" />
                     Export Data
                   </button>
