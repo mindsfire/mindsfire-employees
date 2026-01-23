@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { supabase } from '../lib/supabaseClient';
+import { createClient } from '../utils/supabase/client';
 import { startOfDay, endOfDay, daysAgo, startOfMonth } from '../utils/dateUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -35,6 +35,8 @@ export type AttendanceRecord = {
   loginTime: Date;
   logoutTime: Date | null;
 };
+
+const supabase = createClient();
 
 const OFFICE_START_HOUR = 10; // 10:00 AM
 const OFFICE_END_HOUR = 19;   // 07:00 PM
@@ -296,7 +298,7 @@ export default function Home() {
         // Fetch employee names for all records
         if (formattedRecords.length > 0) {
           try {
-            const uniqueEmails = [...new Set(formattedRecords.map(r => r.email))];
+            const uniqueEmails = [...new Set(formattedRecords.map((r: AttendanceRecord) => r.email))];
             const { data: employees, error: empError } = await supabase
               .schema('attendance')
               .from('employees')
@@ -304,13 +306,13 @@ export default function Home() {
               .in('email', uniqueEmails);
 
             if (!empError && employees) {
-              const employeeMap = employees.reduce((acc, emp) => {
+              const employeeMap = employees.reduce((acc: Record<string, string>, emp: { email: string; full_name: string }) => {
                 acc[emp.email] = emp.full_name;
                 return acc;
               }, {} as Record<string, string>);
 
               // Update records with actual employee names
-              formattedRecords.forEach(record => {
+              formattedRecords.forEach((record: AttendanceRecord) => {
                 record.name = employeeMap[record.email] || 'Unknown Employee';
               });
             }
@@ -341,7 +343,7 @@ export default function Home() {
         // Check for active session (only from today and not auto-closed)
         const currentToday = startOfDay();
 
-        console.log('All records after auto-close:', autoClosedRecords.map(r => ({
+        console.log('All records after auto-close:', autoClosedRecords.map((r: AttendanceRecord) => ({
           id: r.id,
           loginTime: r.loginTime,
           logoutTime: r.logoutTime,
@@ -388,7 +390,7 @@ export default function Home() {
           }
         }
 
-        setRecords(validRecords.sort((a, b) => b.loginTime.getTime() - a.loginTime.getTime()));
+        setRecords(validRecords.sort((a: AttendanceRecord, b: AttendanceRecord) => b.loginTime.getTime() - a.loginTime.getTime()));
       } catch (error) {
         console.error('Error loading records:', error);
         setError('Failed to load attendance records. Some data might be corrupted.');

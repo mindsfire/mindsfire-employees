@@ -242,66 +242,72 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     getSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      if (session?.user?.email) {
-        // First try to find existing employee
-        const { data: employee } = await supabase
-          .schema('attendance')
-          .from('employees')
-          .select('*')
-          .eq('email', session.user.email)
-          .single();
-
-        if (employee) {
-          setUser({
-            id: employee.id,
-            email: employee.email,
-            name: employee.full_name,
-            role: employee.role,
-            firstName: employee.first_name,
-            lastName: employee.last_name,
-            department: employee.department
-          });
-
-          // Check if user needs to change password
-          const needsPasswordChange = !employee.password_changed || employee.password_changed === false;
-          setRequiresPasswordChange(needsPasswordChange);
-        } else if (event === 'SIGNED_IN') {
-          // Auto-create employee if doesn't exist
-          const { data: newEmployee } = await supabase
+      try {
+        setLoading(true);
+        if (session?.user?.email) {
+          // First try to find existing employee
+          const { data: employee } = await supabase
             .schema('attendance')
             .from('employees')
-            .insert({
-              email: session.user.email,
-              full_name: session.user.user_metadata?.full_name || session.user.email,
-              first_name: session.user.user_metadata?.first_name || '',
-              last_name: session.user.user_metadata?.last_name || '',
-              role: 'employee',
-              department: 'General'
-            })
-            .select()
+            .select('*')
+            .eq('email', session.user.email)
             .single();
 
-          if (newEmployee) {
+          if (employee) {
             setUser({
-              id: newEmployee.id,
-              email: newEmployee.email,
-              name: newEmployee.full_name,
-              role: newEmployee.role,
-              firstName: newEmployee.first_name,
-              lastName: newEmployee.last_name,
-              department: newEmployee.department
+              id: employee.id,
+              email: employee.email,
+              name: employee.full_name,
+              role: employee.role,
+              firstName: employee.first_name,
+              lastName: employee.last_name,
+              department: employee.department
             });
 
-            // New employees always need to change password
-            const needsPasswordChange = true;
+            // Check if user needs to change password
+            const needsPasswordChange = !employee.password_changed || employee.password_changed === false;
             setRequiresPasswordChange(needsPasswordChange);
+          } else if (event === 'SIGNED_IN') {
+            // Auto-create employee if doesn't exist
+            const { data: newEmployee } = await supabase
+              .schema('attendance')
+              .from('employees')
+              .insert({
+                email: session.user.email,
+                full_name: session.user.user_metadata?.full_name || session.user.email,
+                first_name: session.user.user_metadata?.first_name || '',
+                last_name: session.user.user_metadata?.last_name || '',
+                role: 'employee',
+                department: 'General'
+              })
+              .select()
+              .single();
+
+            if (newEmployee) {
+              setUser({
+                id: newEmployee.id,
+                email: newEmployee.email,
+                name: newEmployee.full_name,
+                role: newEmployee.role,
+                firstName: newEmployee.first_name,
+                lastName: newEmployee.last_name,
+                department: newEmployee.department
+              });
+
+              // New employees always need to change password
+              const needsPasswordChange = true;
+              setRequiresPasswordChange(needsPasswordChange);
+            }
           }
+        } else {
+          setUser(null);
+          setRequiresPasswordChange(false);
         }
-      } else {
-        setUser(null);
-        setRequiresPasswordChange(false);
+      } catch (error) {
+        console.error('onAuthStateChange error:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => {
