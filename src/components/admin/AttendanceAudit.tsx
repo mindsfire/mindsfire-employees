@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { createClient } from '../../utils/supabase/client';
 import { generateAttendanceAlerts, AttendanceRecord, AlertType } from '../../utils/attendanceAlerts';
 import { startOfDay, endOfDay, daysAgo } from '../../utils/dateUtils';
 import { MockAccount } from '../../contexts/AuthContext';
@@ -12,6 +12,8 @@ interface ExpandedAttendanceRecord extends AttendanceRecord {
     alerts: AlertType[];
     duration: number; // in hours
 }
+
+const supabase = createClient();
 
 export default function AttendanceAudit({ employees }: AttendanceAuditProps) {
     const [startDate, setStartDate] = useState(daysAgo(30).toISOString().split('T')[0]);

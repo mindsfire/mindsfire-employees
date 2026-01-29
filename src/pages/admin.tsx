@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../lib/supabaseClient';
+import { createClient } from '../utils/supabase/client';
 import { generateAttendanceAlerts, AttendanceAlert, AttendanceRecord } from '../utils/attendanceAlerts';
 import { startOfDay, endOfDay } from '../utils/dateUtils';
 import {
@@ -30,6 +30,8 @@ type EmployeeFormState = {
   joiningDate: string;
   password: string;
 };
+
+const supabase = createClient();
 
 const initialFormState: EmployeeFormState = {
   id: '',
