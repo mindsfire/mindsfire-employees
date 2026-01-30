@@ -112,6 +112,7 @@ export default function Login() {
         return;
       }
 
+      setResetMessage('Password reset link sent! Redirecting...');
       router.push(`/forgot-password-confirmation?email=${encodeURIComponent(email)}`);
     } catch (err) {
       console.error('Forgot password error:', err);

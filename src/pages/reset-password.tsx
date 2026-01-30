@@ -140,66 +140,67 @@ export default function ResetPassword() {
 
     const onSubmit = async (values: ResetPasswordFormValues) => {
         try {
-            console.log('[Reset Password] Starting password update...');
+            console.log('[Reset Password] Submit button clicked. Values present:', !!values.password);
             setError('');
             setIsLoading(true);
 
             // 1. Update Supabase Auth password
+            console.log('[Reset Password] Calling supabase.auth.updateUser...');
             const { data, error: updateError } = await supabase.auth.updateUser({
                 password: values.password,
             });
 
             if (updateError) {
-                console.error('[Reset Password] Update error:', updateError);
+                console.error('[Reset Password] Supabase update error:', updateError);
                 throw updateError;
             }
 
-            console.log('[Reset Password] Auth update successful. User:', data?.user?.email);
+            console.log('[Reset Password] Auth update successful. User email:', data?.user?.email);
+            console.log('[Reset Password] Setting success state to TRUE');
 
             // SUCCESS! Set this immediately so the UI changes
             setIsSuccess(true);
-            setIsLoading(false); // Stop the spinner on the button
+            setIsLoading(false);
+
+            console.log('[Reset Password] Success state has been set. isSuccess should now be true.');
 
             // 2. Update the password_changed flag in our employees table (Background Task)
             if (data?.user?.email) {
                 console.log('[Reset Password] Triggering background DB update...');
-                // We don't 'await' this so it doesn't block the UI, but we still handle errors
-                const updateDb = async () => {
-                    try {
-                        const { error: dbError } = await supabase
-                            .schema('attendance')
-                            .from('employees')
-                            .update({ password_changed: true })
-                            .eq('email', data.user!.email);
-
+                supabase
+                    .schema('attendance')
+                    .from('employees')
+                    .update({ password_changed: true })
+                    .eq('email', data.user.email)
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    .then(({ error: dbError }: { error: any }) => {
                         if (dbError) {
                             console.error('[Reset Password] Background DB Update error:', dbError);
                         } else {
                             console.log('[Reset Password] Background DB Update successful');
                         }
-                    } catch (e) {
-                        console.error('[Reset Password] Background DB Update exception:', e);
-                    }
-                };
-                updateDb();
+                    })
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    .catch((err: any) => {
+                        console.error('[Reset Password] Background DB Exception:', err);
+                    });
             }
 
             // Clean up the recovery cookie
             document.cookie = 'password_recovery=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 
-            // Auto redirect after 3 seconds
+            // Redirect after 5 seconds to give user time to read
+            console.log('[Reset Password] Redirect scheduled in 5 seconds.');
             setTimeout(() => {
+                console.log('[Reset Password] Redirecting to logout...');
                 router.push('/logout');
-            }, 3000);
-
-            return; // Exit early since we handled success state manually above
+            }, 5000);
 
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to reset password. Please try again.';
             setError(errorMessage);
-            console.error('[Reset Password] Submit error caught:', err);
-        } finally {
             setIsLoading(false);
+            console.error('[Reset Password] Submit process caught an error:', err);
         }
     };
 
