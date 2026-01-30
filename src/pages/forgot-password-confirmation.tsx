@@ -32,13 +32,13 @@ export default function ForgotPasswordConfirmation() {
                     <div className="space-y-2">
                         <h1 className="text-2xl font-bold tracking-tight">Check your email</h1>
                         <p className="text-sm text-muted-foreground">
-                            We've sent a password reset link to {email ? <span className="font-semibold text-foreground">{email}</span> : 'your email address'}.
+                            We&apos;ve sent a password reset link to {email ? <span className="font-semibold text-foreground">{email}</span> : 'your email address'}.
                         </p>
                     </div>
 
                     <div className="w-full space-y-3 pt-2">
                         <p className="text-xs text-muted-foreground">
-                            Didn't receive the email? Check your spam folder or try requesting another link.
+                            Didn&apos;t receive the email? Check your spam folder or try requesting another link.
                         </p>
                         <Button
                             variant="outline"
