@@ -21,6 +21,15 @@ type ResetPasswordFormValues = {
     confirmPassword: string;
 };
 
+type DebugInfo = {
+    hasSession: boolean;
+    hasCookie: boolean;
+    email?: string;
+    url: string;
+    cookies: string[];
+    error?: string;
+} | null;
+
 export default function ResetPassword() {
     const [error, setError] = useState('');
     const [isSuccess, setIsSuccess] = useState(false);
@@ -28,6 +37,7 @@ export default function ResetPassword() {
     const [showPassword, setShowPassword] = useState(false);
     const [isReady, setIsReady] = useState(false);
     const [userEmail, setUserEmail] = useState('');
+    const [debugInfo, setDebugInfo] = useState<DebugInfo>(null);
 
     const router = useRouter();
     const supabase = createClient();
@@ -51,8 +61,13 @@ export default function ResetPassword() {
 
         const getCookie = (name: string) => {
             try {
-                const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-                return match ? match[2] : '';
+                const cookies = document.cookie.split(';').map(c => c.trim());
+                for (const cookie of cookies) {
+                    if (cookie.startsWith(`${name}=`)) {
+                        return cookie.substring(name.length + 1);
+                    }
+                }
+                return '';
             } catch (e) {
                 return '';
             }
@@ -65,13 +80,19 @@ export default function ResetPassword() {
             const hasRecoveryCookie = getCookie('password_recovery') === 'true';
 
             // 2. Check for active session
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-            console.log('[Reset Password] Status check:', {
+            const info = {
                 hasSession: !!session,
                 hasCookie: hasRecoveryCookie,
-                email: session?.user?.email
-            });
+                email: session?.user?.email,
+                url: typeof window !== 'undefined' ? window.location.href : '',
+                cookies: typeof document !== 'undefined' ? document.cookie.split(';').map(c => c.split('=')[0].trim()) : [],
+                error: sessionError?.message
+            };
+
+            console.log('[Reset Password] Status check:', info);
+            if (mounted) setDebugInfo(info);
 
             if (!mounted) return;
 
@@ -79,8 +100,6 @@ export default function ResetPassword() {
                 setUserEmail(session.user.email || '');
                 setIsReady(true);
             } else if (hasRecoveryCookie) {
-                // We have the cookie, so we can show the UI even if the session isn't fully ready yet
-                // However, we'll wait a bit for the session as we need it for password update
                 setIsReady(true);
             }
         };
@@ -100,20 +119,17 @@ export default function ResetPassword() {
             }
         });
 
-        // Fallback: if after 10 seconds we still aren't ready, and we aren't in success state, redirect
+        // Fallback: if after 8 seconds
         const timeout = setTimeout(() => {
             if (!isReady && !isSuccess && mounted) {
-                console.error('[Reset Password] Not ready after timeout.');
+                console.error('[Reset Password] Not ready after timeout. Manual check info:', debugInfo);
                 const hasCookie = getCookie('password_recovery') === 'true';
-                if (hasCookie) {
-                    // If we have the cookie but no session, we might still want to show the form
-                    // and let the user try, because maybe the session exists but getSession() is being weird
+                if (hasCookie || (typeof window !== 'undefined' && window.location.hash.includes('access_token'))) {
+                    console.log('[Reset Password] Potential session found, forcing form display.');
                     setIsReady(true);
-                } else {
-                    router.replace('/login?error=Invalid or expired reset link. Please try again.');
                 }
             }
-        }, 10000);
+        }, 8000);
 
         return () => {
             mounted = false;
@@ -124,46 +140,64 @@ export default function ResetPassword() {
 
     const onSubmit = async (values: ResetPasswordFormValues) => {
         try {
+            console.log('[Reset Password] Starting password update...');
             setError('');
             setIsLoading(true);
 
-            // 1. Update Subapase Auth password
+            // 1. Update Supabase Auth password
             const { data, error: updateError } = await supabase.auth.updateUser({
                 password: values.password,
             });
 
             if (updateError) {
+                console.error('[Reset Password] Update error:', updateError);
                 throw updateError;
             }
 
-            // 2. Update the password_changed flag in our employees table
-            if (data?.user?.email) {
-                const { error: dbError } = await supabase
-                    .schema('attendance')
-                    .from('employees')
-                    .update({ password_changed: true })
-                    .eq('email', data.user.email);
+            console.log('[Reset Password] Auth update successful. User:', data?.user?.email);
 
-                if (dbError) {
-                    console.error('Failed to update password_changed flag:', dbError);
-                    // We don't block the user if this fails, as the auth password IS changed
-                }
-            }
-
+            // SUCCESS! Set this immediately so the UI changes
             setIsSuccess(true);
+            setIsLoading(false); // Stop the spinner on the button
+
+            // 2. Update the password_changed flag in our employees table (Background Task)
+            if (data?.user?.email) {
+                console.log('[Reset Password] Triggering background DB update...');
+                // We don't 'await' this so it doesn't block the UI, but we still handle errors
+                const updateDb = async () => {
+                    try {
+                        const { error: dbError } = await supabase
+                            .schema('attendance')
+                            .from('employees')
+                            .update({ password_changed: true })
+                            .eq('email', data.user!.email);
+
+                        if (dbError) {
+                            console.error('[Reset Password] Background DB Update error:', dbError);
+                        } else {
+                            console.log('[Reset Password] Background DB Update successful');
+                        }
+                    } catch (e) {
+                        console.error('[Reset Password] Background DB Update exception:', e);
+                    }
+                };
+                updateDb();
+            }
 
             // Clean up the recovery cookie
             document.cookie = 'password_recovery=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 
             // Auto redirect after 3 seconds
             setTimeout(() => {
-                router.push('/');
+                router.push('/logout');
             }, 3000);
+
+            return; // Exit early since we handled success state manually above
 
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to reset password. Please try again.';
             setError(errorMessage);
-            console.error('Reset password error:', err);
+            console.error('[Reset Password] Submit error caught:', err);
         } finally {
             setIsLoading(false);
         }
@@ -208,11 +242,11 @@ export default function ResetPassword() {
                         <div className="space-y-1">
                             <h3 className="font-semibold text-lg">Password Changed Successfully</h3>
                             <p className="text-sm text-muted-foreground">
-                                Your account has been updated with the new password. You will be redirected to your dashboard in a few seconds.
+                                Your account has been updated with the new password. You will now be logged out and asked to log in again.
                             </p>
                         </div>
-                        <Button className="w-full mt-2" onClick={() => router.push('/')}>
-                            Go to Dashboard
+                        <Button className="w-full mt-2" onClick={() => router.push('/logout')}>
+                            Log In with New Password
                         </Button>
                     </div>
                 ) : (
