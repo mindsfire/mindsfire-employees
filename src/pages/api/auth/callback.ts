@@ -82,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (isRecoveryFlow) {
             console.log('[Auth Callback] Password recovery flow detected');
 
-            // Correctly handle existing cookies (getHeader can return string or string[])
+            // Correctly handle existing cookies to avoid overwriting session cookies
             const setCookieHeader = res.getHeader('Set-Cookie');
             const existingCookies = Array.isArray(setCookieHeader)
                 ? setCookieHeader
@@ -90,29 +90,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     ? [setCookieHeader]
                     : [];
 
-            res.setHeader('Set-Cookie', [
-                ...existingCookies,
-                serializeCookieHeader('password_recovery', 'true', {
-                    path: '/',
-                    maxAge: 300, // 5 minutes
-                    httpOnly: false,
-                    sameSite: 'lax',
-                    secure: process.env.NODE_ENV === 'production'
-                })
-            ]);
+            const isProduction = process.env.NODE_ENV === 'production';
+            const recoveryCookie = serializeCookieHeader('password_recovery', 'true', {
+                path: '/',
+                maxAge: 300, // 5 minutes
+                httpOnly: false,
+                sameSite: 'lax',
+                secure: isProduction
+            });
+
+            // LOG: Check if we are merging correctly
+            console.log('[Auth Callback] Existing cookies count:', existingCookies.length);
+
+            res.setHeader('Set-Cookie', [...existingCookies, recoveryCookie]);
         }
 
         if (!data.session && isRecoveryFlow) {
-            console.log('[Auth Callback] Recovery flow but no session - still redirecting');
+            console.warn('[Auth Callback] WARNING: Exchange successful but no session data returned');
         }
     } else {
-        console.warn('[Auth Callback] No code provided in query')
+        console.warn('[Auth Callback] No code provided in query - check if this is expected')
         // Check if this is a direct access to reset password without code
         if (next === '/reset-password' || next === '/post-reset-link') {
+            console.error('[Auth Callback] Denying access to reset-password: no code found');
             return res.redirect(`/login?error=${encodeURIComponent('Please click the reset link from your email')}`)
         }
     }
 
-    console.log('[Auth Callback] Redirecting to:', next)
-    res.redirect(next)
+    console.log('[Auth Callback] Redirecting to FINAL NEXT:', next)
+    // Use res.setHeader('Location') manually for cleaner redirection behavior in some Next versions
+    res.writeHead(302, { Location: next });
+    res.end();
 }

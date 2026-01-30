@@ -26,15 +26,7 @@ export default function ResetPassword() {
     const [isSuccess, setIsSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [isReady, setIsReady] = useState(() => {
-        if (typeof document === 'undefined') return false;
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; password_recovery=`);
-        if (parts.length === 2) {
-            return parts.pop()?.split(';').shift() === 'true';
-        }
-        return false;
-    });
+    const [isReady, setIsReady] = useState(false);
     const [userEmail, setUserEmail] = useState('');
 
     const router = useRouter();
@@ -57,80 +49,78 @@ export default function ResetPassword() {
     useEffect(() => {
         let mounted = true;
 
-        // Check if we have the recovery cookie
         const getCookie = (name: string) => {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) {
-                const cookieValue = parts.pop()?.split(';').shift();
-                return cookieValue || '';
+            try {
+                const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+                return match ? match[2] : '';
+            } catch (e) {
+                return '';
             }
-            return '';
         };
 
-        const isRecoveryFlow = getCookie('password_recovery') === 'true';
-        console.log('[Reset Password] Recovery flow detected:', isRecoveryFlow);
+        const checkRecoveryStatus = async () => {
+            console.log('[Reset Password] Checking recovery status...');
 
-        if (isRecoveryFlow && mounted) {
-            console.log('[Reset Password] Recovery flow - proceeding without waiting for initial session');
-            setIsReady(true);
-        }
+            // 1. Check for recovery cookie
+            const hasRecoveryCookie = getCookie('password_recovery') === 'true';
 
-        // 1. First, check if we already have a session
-        const initCheck = async () => {
+            // 2. Check for active session
             const { data: { session } } = await supabase.auth.getSession();
-            if (session && mounted) {
-                console.log('[Reset Password] Initial session found:', session.user.email);
-                setIsReady(true);
-            } else if (isRecoveryFlow && mounted) {
-                // If this is a recovery flow but no session yet, wait a bit longer
-                console.log('[Reset Password] Recovery flow: waiting for session...');
-            }
-        };
-        initCheck();
 
-        // 2. Listen for auth state changes (especially important for recovery flows)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-            console.log('[Reset Password] Auth event:', event);
+            console.log('[Reset Password] Status check:', {
+                hasSession: !!session,
+                hasCookie: hasRecoveryCookie,
+                email: session?.user?.email
+            });
+
             if (!mounted) return;
 
             if (session) {
-                console.log('[Reset Password] Session detected via event:', session.user.email);
+                setUserEmail(session.user.email || '');
+                setIsReady(true);
+            } else if (hasRecoveryCookie) {
+                // We have the cookie, so we can show the UI even if the session isn't fully ready yet
+                // However, we'll wait a bit for the session as we need it for password update
+                setIsReady(true);
+            }
+        };
+
+        checkRecoveryStatus();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+            if (!mounted) return;
+            console.log('[Reset Password] Auth State Change:', event, !!session);
+
+            if (session) {
                 setUserEmail(session.user.email || '');
                 setIsReady(true);
             }
-
             if (event === 'PASSWORD_RECOVERY') {
-                console.log('[Reset Password] Password recovery mode active');
                 setIsReady(true);
             }
         });
 
-        // 3. Fallback: if after 12 seconds we still aren't ready, and we aren't in success state, redirect
+        // Fallback: if after 10 seconds we still aren't ready, and we aren't in success state, redirect
         const timeout = setTimeout(() => {
             if (!isReady && !isSuccess && mounted) {
-                console.error('[Reset Password] No session found after timeout.');
-                console.log('[Reset Password] Debug info:', {
-                    isReady,
-                    isSuccess,
-                    isRecoveryFlow,
-                    cookie: getCookie('password_recovery'),
-                    url: typeof window !== 'undefined' ? window.location.href : 'N/A'
-                });
-                if (isRecoveryFlow) {
-                    router.replace('/login?error=Reset link expired. Please request a new password reset.');
+                console.error('[Reset Password] Not ready after timeout.');
+                const hasCookie = getCookie('password_recovery') === 'true';
+                if (hasCookie) {
+                    // If we have the cookie but no session, we might still want to show the form
+                    // and let the user try, because maybe the session exists but getSession() is being weird
+                    setIsReady(true);
                 } else {
                     router.replace('/login?error=Invalid or expired reset link. Please try again.');
                 }
             }
-        }, 12000); // Increased timeout for slower connections on Vercel
+        }, 10000);
 
         return () => {
             mounted = false;
             subscription.unsubscribe();
             clearTimeout(timeout);
         };
-    }, [supabase.auth, router, isReady, isSuccess]);
+    }, [supabase.auth, router, isSuccess]);
 
     const onSubmit = async (values: ResetPasswordFormValues) => {
         try {

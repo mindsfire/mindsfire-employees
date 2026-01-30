@@ -112,7 +112,7 @@ export default function Login() {
         return;
       }
 
-      setResetMessage('If an account exists for this email, a password reset link has been sent.');
+      router.push(`/forgot-password-confirmation?email=${encodeURIComponent(email)}`);
     } catch (err) {
       console.error('Forgot password error:', err);
       setAuthError('Unable to send reset email. Please try again.');

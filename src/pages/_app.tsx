@@ -9,8 +9,8 @@ import '../styles/globals.css';
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
-  // Don't show layout on login, logout, or reset-password pages
-  const isNoLayoutPage = ['/login', '/logout', '/reset-password'].includes(router.pathname);
+  // Don't show layout on login, logout, reset-password, or forgot-password-confirmation pages
+  const isNoLayoutPage = ['/login', '/logout', '/reset-password', '/forgot-password-confirmation'].includes(router.pathname);
 
   return (
     <AuthProvider>
